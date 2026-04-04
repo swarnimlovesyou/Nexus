@@ -1,0 +1,334 @@
+
+---
+
+## The combined product: **Nexus** *(working name)*
+
+> *"Autopilot for LLM usage — observes everything, remembers everything, optimizes over time."*
+
+The core insight from your file is exactly right: Portkey logs data but can't act on it; Contextd remembers but has no real-time decision power. Combined, they form a closed learning loop — the system gets smarter with every single LLM call, without any retraining.
+
+---
+
+## Combined Architecture
+
+### The data flow (as shown in the diagram above)
+
+Every request passes through six stages:
+
+**1. Memory recall (Contextd)** — Before routing to any model, Contextd performs hybrid retrieval (semantic + recency + confidence via RRF fusion). It injects relevant context: user preferences, past prompt outcomes, which models worked well for this query type, prior results.
+
+**2. Smart routing (Portkey)** — Armed with Contextd's memory, the router selects the optimal model not just on static rules but on *learned* performance data. For this query type, did GPT-4o consistently outperform Gemini? Was Claude 3.5 cheaper with equivalent quality? The router knows.
+
+**3. LLM execution** — The enriched prompt goes to whichever model wins the routing decision. The fleet is pluggable: OpenAI, Anthropic, Google, or local/OSS models.
+
+**4. Observation (Portkey)** — Every response is logged: cost, latency, token count, and a quality signal (thumbs up/down, downstream task success, or an LLM-as-judge score in the commercial tier).
+
+**5. Memory storage (Contextd)** — The outcome is written back as a typed memory with confidence, TTL, and conflict detection. This closes the loop: the next routing decision will know what this call produced.
+
+**6. Intelligence layer** — Three emergent capabilities that no competitor can replicate once the loop has run for weeks or months (more on this below).
+
+---
+
+## New Modules Required (beyond what either tool has today)
+
+### `OutcomeMemory.java` — the bridge record
+
+This is the key new domain object that neither Contextd nor Portkey has:
+
+```java
+public record OutcomeMemory(
+    String      memoryId,         // links to Contextd memory
+    String      portKeyRequestId, // links to Portkey log
+    String      agentId,
+    String      promptHash,       // normalized fingerprint of the prompt
+    String      modelUsed,        // "gpt-4o", "claude-3-5-sonnet", etc.
+    double      costUsd,
+    long        latencyMs,
+    int         inputTokens,
+    int         outputTokens,
+    double      qualityScore,     // 0.0–1.0, from feedback or LLM-judge
+    MemoryType  type,             // always EPISODE for outcomes
+    double      confidence,       // starts at 1.0, decays over time
+    Instant     createdAt,
+    Instant     expiresAt         // outcome memories decay after ~90 days
+) {}
+```
+
+### `RouterIntelligence.java` — learned routing
+
+```java
+// Replaces Portkey's static routing rules with memory-driven decisions.
+public class RouterIntelligence {
+
+    private final ContextdClient memory;
+
+    public ModelSelection selectModel(String agentId, String promptHash, 
+                                      String queryType) {
+        // Pull past outcome memories for this query type
+        List<ScoredMemory> outcomes = memory.query()
+            .for_(queryType)
+            .type(MemoryType.EPISODE)
+            .strategy(RetrievalStrategy.HYBRID)
+            .minConfidence(0.6)
+            .topK(20)
+            .retrieve();
+
+        // Score each model on cost × latency × quality
+        return outcomes.stream()
+            .collect(groupingBy(m -> m.memory().metadata().get("model")))
+            .entrySet().stream()
+            .map(e -> scoreModel(e.getKey(), e.getValue()))
+            .max(Comparator.comparingDouble(ModelScore::composite))
+            .map(ModelScore::toSelection)
+            .orElse(ModelSelection.DEFAULT);
+    }
+
+    private ModelScore scoreModel(String model, List<ScoredMemory> history) {
+        double avgQuality = history.stream()
+            .mapToDouble(m -> Double.parseDouble(
+                m.memory().metadata().get("quality_score")))
+            .average().orElse(0.5);
+        double avgCost = history.stream()
+            .mapToDouble(m -> Double.parseDouble(
+                m.memory().metadata().get("cost_usd")))
+            .average().orElse(0.01);
+        double avgLatency = history.stream()
+            .mapToDouble(m -> Double.parseDouble(
+                m.memory().metadata().get("latency_ms")))
+            .average().orElse(1000);
+
+        // Composite: quality weighted 50%, cost 30%, latency 20%
+        double composite = (avgQuality * 0.5)
+            - (normalise(avgCost) * 0.3)
+            - (normalise(avgLatency) * 0.2);
+
+        return new ModelScore(model, composite, avgCost, avgLatency, avgQuality);
+    }
+}
+```
+
+### `CostIntelligenceEngine.java` — the CFO view
+
+```java
+// Answers: "What did you spend? What could you have spent?"
+public class CostIntelligenceEngine {
+
+    public CostReport generate(String agentId, Duration window) {
+        List<OutcomeMemory> actuals = outcomeStore.findByAgent(agentId, window);
+
+        double actualSpend = actuals.stream()
+            .mapToDouble(OutcomeMemory::costUsd).sum();
+
+        // Re-score each call with the cheapest model that met quality threshold
+        double optimalSpend = actuals.stream()
+            .mapToDouble(o -> cheapestEquivalentCost(o, 0.75))
+            .sum();
+
+        return new CostReport(
+            actualSpend,
+            optimalSpend,
+            actualSpend - optimalSpend,   // "savings on the table"
+            buildByModelBreakdown(actuals),
+            buildByQueryTypeBreakdown(actuals)
+        );
+    }
+}
+```
+
+---
+
+## Complete Repo Structure
+
+```
+nexus/
+├── core/                     # shared domain objects
+│   ├── Memory.java           # (from Contextd — unchanged)
+│   ├── OutcomeMemory.java    # NEW: bridge between observe + store
+│   ├── ModelScore.java       # NEW: routing decision record
+│   └── CostReport.java       # NEW: CFO-level cost breakdown
+│
+├── contextd/                 # memory engine (Contextd — intact)
+│   ├── engine/MemoryEngine.java
+│   ├── store/
+│   ├── retrieval/HybridRetrieval.java
+│   ├── lifecycle/DecayScheduler.java
+│   └── embedding/
+│
+├── portkey/                  # proxy + observability (Portkey — intact)
+│   ├── proxy/LLMProxy.java
+│   ├── analytics/CostAnalyzer.java
+│   ├── analytics/LatencyTracker.java
+│   └── router/StaticRouter.java   # fallback when no memory exists
+│
+├── intelligence/             # NEW: the combined layer
+│   ├── RouterIntelligence.java    # memory-driven model selection
+│   ├── OutcomeCollector.java      # writes Portkey logs → Contextd
+│   ├── CostIntelligenceEngine.java
+│   ├── PromptPerformanceTracker.java
+│   └── QualityJudge.java          # LLM-as-judge (commercial tier)
+│
+├── api/                      # unified REST API
+│   ├── NexusServer.java      # single Javalin server
+│   ├── routes/ProxyRoutes.java     # /v1/chat → intercept → route
+│   ├── routes/MemoryRoutes.java    # /v1/memory/*
+│   ├── routes/AnalyticsRoutes.java # /v1/analytics/cost, /latency
+│   └── routes/InsightsRoutes.java  # /v1/insights/recommendations
+│
+├── mcp/                      # MCP server (combined tools)
+│   ├── NexusMcpServer.java
+│   └── tools/
+│       ├── RememberTool.java
+│       ├── RecallTool.java
+│       ├── ForgetTool.java
+│       ├── CostReportTool.java     # NEW
+│       ├── ModelSuggestTool.java   # NEW
+│       └── InsightsTool.java       # NEW
+│
+├── cli/                      # unified CLI
+│   └── cmd/
+│       ├── StoreCmd.java
+│       ├── QueryCmd.java
+│       ├── LogsCmd.java
+│       ├── CostCmd.java
+│       ├── InsightsCmd.java        # NEW
+│       └── ServeCmd.java
+│
+├── db/
+│   ├── schema_contextd.sql   # memories, relations, agents
+│   ├── schema_portkey.sql    # request_logs, cost_records
+│   └── schema_nexus.sql      # outcome_memories (bridge table)
+│
+├── docker-compose.yml
+├── Dockerfile
+├── build.gradle
+└── README.md
+```
+
+---
+
+## Database — New Bridge Table
+
+```sql
+-- Links every LLM call to a Contextd memory
+CREATE TABLE outcome_memories (
+    memory_id        UUID PRIMARY KEY REFERENCES memories(memory_id),
+    portkey_req_id   VARCHAR(255) NOT NULL,
+    agent_id         VARCHAR(255) NOT NULL,
+    prompt_hash      VARCHAR(64)  NOT NULL,   -- SHA-256 of normalised prompt
+    model_used       VARCHAR(100) NOT NULL,
+    cost_usd         DECIMAL(10,8) NOT NULL,
+    latency_ms       INTEGER NOT NULL,
+    input_tokens     INTEGER,
+    output_tokens    INTEGER,
+    quality_score    DOUBLE PRECISION,         -- NULL until rated
+    query_type       VARCHAR(100),             -- inferred from embedding cluster
+    created_at       TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX idx_outcome_agent_model  ON outcome_memories(agent_id, model_used);
+CREATE INDEX idx_outcome_agent_type   ON outcome_memories(agent_id, query_type);
+CREATE INDEX idx_outcome_prompt_hash  ON outcome_memories(prompt_hash);
+```
+
+---
+
+## Unified CLI
+
+```bash
+# --- PROXY (Portkey inherited) ---
+nexus serve                      # starts local proxy on :7743
+nexus logs                       # tail real-time LLM calls
+nexus cost --last 30d            # actual vs optimal spend
+nexus cost --breakdown by-model  # per-model cost breakdown
+
+# --- MEMORY (Contextd inherited) ---
+nexus memory store --agent my-bot "User prefers bullet summaries"
+nexus memory query --agent my-bot "communication style"
+nexus memory graph --agent my-bot --conflicts
+
+# --- INTELLIGENCE (new) ---
+nexus insights recommend         # "Switch summarisation to Gemini, save $40/mo"
+nexus insights prompts --top 10  # highest-quality prompts by agent
+nexus insights routing           # current routing decisions + reasons
+nexus insights what-if --model gpt-4o-mini   # simulate routing change
+
+# --- MCP ---
+nexus mcp serve                  # all 8 MCP tools available
+```
+
+---
+
+## New MCP Tools (additions to existing 5 from Contextd)
+
+```json
+{
+  "name": "cost_report",
+  "description": "Return actual vs optimal spend for an agent over a time window.",
+  "inputSchema": {
+    "properties": {
+      "agent_id": { "type": "string" },
+      "days":     { "type": "integer", "default": 30 }
+    }
+  }
+},
+{
+  "name": "model_suggest",
+  "description": "Recommend the best model for a given query type based on past performance memory.",
+  "inputSchema": {
+    "properties": {
+      "agent_id":   { "type": "string" },
+      "query_type": { "type": "string" }
+    }
+  }
+},
+{
+  "name": "get_insights",
+  "description": "Return top optimization recommendations: routing changes, prompt improvements, cost savings.",
+  "inputSchema": {
+    "properties": {
+      "agent_id": { "type": "string" }
+    }
+  }
+}
+```
+
+---
+
+## Addressing the Hard Problems (from your file)
+
+**1. Evaluation problem ("how do you measure better output?")**
+Three-tier approach: (a) explicit thumbs up/down in the CLI/API, (b) downstream task success as a signal (did the agent complete its goal?), (c) LLM-as-judge scoring via `QualityJudge.java` in the commercial tier — sends a stripped, non-identifying version of prompt + response to a cheap model to score on a rubric.
+
+**2. Memory explosion ("what to store vs discard?")**
+Contextd's existing TTL + confidence decay solves most of this. Outcome memories default to a 90-day TTL and decay linearly. A `MemoryPruner` job runs nightly and hard-deletes anything below `confidence < 0.15`. The commercial tier adds an LLM-assisted distillation pass: 100 episode memories for the same query type get compressed into a single `SKILL` or `FACT` memory.
+
+**3. Routing logic ("deterministic vs learning-based?")**
+Deterministic first. For a cold-start agent with no outcome memories, `StaticRouter` applies Portkey's existing rule-based routing. Once an agent has 20+ outcomes for a query type, `RouterIntelligence` takes over. The handoff is gradual and logged — you can always audit why a routing decision was made.
+
+**4. Latency tradeoff ("more intelligence = slower system?")**
+Memory recall and routing selection happen in parallel on the critical path and are capped at 50ms. The Contextd query uses an in-memory embedding cache so the pgvector lookup is a single indexed scan. The `OutcomeCollector` writes to Contextd *after* the response is returned — it is completely off the hot path.
+
+---
+
+## Launch Plan
+
+**Week 1 — ship the OSS foundation**
+Release with both engines working independently (Contextd + Portkey proxy), plus the `OutcomeCollector` bridge that starts filling the outcome table. The demo GIF shows two things in 30 seconds: the CONTRADICTS graph from Contextd, and `nexus cost` showing "$87 actual / $31 optimal" on the first run. Both are immediately legible to developers and finance teams. Target: Show HN, 300 stars on day 1.
+
+**Week 2 — distribution hooks**
+Homebrew tap, `npm install -g nexus-cli`, apt repo. Publish a LangChain4j adapter and a Python SDK. Open PRs to LangChain4j and Spring AI adding Nexus as an optional memory + proxy backend. Framework maintainers are actively looking for this — let their star counts do the distribution.
+
+**Week 3 — MCP launch + the memeable moment**
+Ship the full MCP server with all 8 tools. Frame the launch as: *"Ask Claude how much you're spending on Claude, and what you could save."* That's the loop that gets retweeted. Post to Claude Discord, r/ClaudeAI, LangChain Discord, and the Anthropic developer forum.
+
+**Week 4 — content moat**
+One blog post: *"I routed 10,000 LLM calls through Nexus and found $340/month in avoidable spend."* Real numbers from dogfooding. This is the Product Hunt launch asset and the SEO foundation — "LLM cost optimization", "agent memory", "AI routing" are near-zero competition search terms today.
+
+**Commercial trigger — when it sells itself**
+Two moments cause spontaneous hand-raises: (a) a team of 3+ devs all want shared cost visibility and shared agent memory across bots, and (b) a user's routing intelligence has been running for 60+ days and they do not want to lose that learned data. The paid tier is a lightweight cloud sync — aggregated cost metadata and anonymized outcome statistics only, never prompt content. That's the $29/mo/team pitch, and it writes itself because the alternative is losing months of optimization.
+
+**The category claim no one else can make**
+LangSmith, Helicone, and Braintrust all require you to send your prompts to their servers. Nexus is local-first by architecture — the proxy runs on your machine, the memory store is your Postgres, and the cloud sync never touches prompt content. "LLM observability that never sees your data" is a headline that enterprise security teams respond to in the first sentence. That's not a feature — it's a category.
+
+**The compounding moat**
+At 30 days, Nexus knows your routing patterns. At 90 days, it knows your best prompts. At 12 months, it holds institutional knowledge about your agents that would take a data engineering project to migrate. No competitor can copy the learned data. They can copy the infrastructure.

@@ -1,0 +1,15 @@
+C:\Projects\DSAPROJECT\src\main\java\com\nexus\domain\ModelSuitability.java
+C:\Projects\DSAPROJECT\src\main\java\com\nexus\domain\OutcomeMemory.java
+C:\Projects\DSAPROJECT\src\main\java\com\nexus\domain\User.java
+C:\Projects\DSAPROJECT\src\main\java\com\nexus\dao\GenericDao.java
+C:\Projects\DSAPROJECT\src\main\java\com\nexus\dao\SuitabilityDao.java
+C:\Projects\DSAPROJECT\src\main\java\com\nexus\service\RoutingEngine.java
+C:\Projects\DSAPROJECT\src\main\java\com\nexus\service\UserService.java
+C:\Projects\DSAPROJECT\src\main\java\com\nexus\dao\DbConnectionManager.java
+C:\Projects\DSAPROJECT\src\main\java\com\nexus\presentation\NexusApp.java
+C:\Projects\DSAPROJECT\src\main\java\com\nexus\dao\UserDao.java
+C:\Projects\DSAPROJECT\src\main\java\com\nexus\domain\BaseEntity.java
+C:\Projects\DSAPROJECT\src\main\java\com\nexus\dao\LlmModelDao.java
+C:\Projects\DSAPROJECT\src\main\java\com\nexus\domain\LlmModel.java
+C:\Projects\DSAPROJECT\src\main\java\com\nexus\dao\OutcomeMemoryDao.java
+C:\Projects\DSAPROJECT\src\main\java\com\nexus\domain\TaskType.java
