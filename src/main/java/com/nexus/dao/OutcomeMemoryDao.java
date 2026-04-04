@@ -113,6 +113,22 @@ public class OutcomeMemoryDao implements GenericDao<OutcomeMemory> {
         return list;
     }
 
+    public List<OutcomeMemory> findByModelId(Integer modelId) {
+        List<OutcomeMemory> list = new ArrayList<>();
+        String sql = "SELECT * FROM outcome_memories WHERE model_id = ?";
+        try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
+            pstmt.setInt(1, modelId);
+            try (ResultSet rs = pstmt.executeQuery()) {
+                while (rs.next()) {
+                    list.add(mapResultSetToMemory(rs));
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Error fetching memories by model id: " + e.getMessage());
+        }
+        return list;
+    }
+
     private OutcomeMemory mapResultSetToMemory(ResultSet rs) throws SQLException {
         LocalDateTime createdAt = null;
         if (rs.getString("created_at") != null) {

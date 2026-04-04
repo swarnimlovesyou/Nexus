@@ -2,7 +2,7 @@ package com.nexus.domain;
 
 import java.time.LocalDateTime;
 
-public class OutcomeMemory extends BaseEntity {
+public class OutcomeMemory extends BaseEntity implements Auditable {
     private Integer userId;
     private Integer modelId;
     private TaskType taskType;
@@ -44,7 +44,17 @@ public class OutcomeMemory extends BaseEntity {
 
     @Override
     public String getEntityDisplayName() {
-        return "Memory: " + taskType + " execution by user " + userId;
+        return "Trace: " + taskType + " execute " + modelId;
+    }
+
+    @Override
+    public String getAuditSummary() {
+        return "Execution Log: User " + userId + " invoked model " + modelId + " for " + taskType;
+    }
+
+    @Override
+    public LocalDateTime getTimestamp() {
+        return getCreatedAt();
     }
 
     @Override

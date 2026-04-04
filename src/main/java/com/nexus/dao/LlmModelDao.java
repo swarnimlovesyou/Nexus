@@ -90,6 +90,22 @@ public class LlmModelDao implements GenericDao<LlmModel> {
         return models;
     }
 
+    public List<LlmModel> findByProvider(String provider) {
+        List<LlmModel> models = new ArrayList<>();
+        String sql = "SELECT * FROM llm_models WHERE provider LIKE ?";
+        try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
+            pstmt.setString(1, "%" + provider + "%");
+            try (ResultSet rs = pstmt.executeQuery()) {
+                while (rs.next()) {
+                    models.add(mapResultSetToModel(rs));
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Error filtering models by provider: " + e.getMessage());
+        }
+        return models;
+    }
+
     private LlmModel mapResultSetToModel(ResultSet rs) throws SQLException {
         LocalDateTime createdAt = null;
         if (rs.getString("created_at") != null) {

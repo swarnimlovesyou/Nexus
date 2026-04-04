@@ -2,7 +2,7 @@ package com.nexus.domain;
 
 import java.time.LocalDateTime;
 
-public class User extends BaseEntity {
+public abstract class User extends BaseEntity implements Auditable {
     private String username;
     private String passwordHash;
     private String role;
@@ -28,16 +28,12 @@ public class User extends BaseEntity {
     public void setRole(String role) { this.role = role; }
 
     @Override
-    public String getEntityDisplayName() {
-        return "User: " + username + " (" + role + ")";
+    public LocalDateTime getTimestamp() {
+        return getCreatedAt();
     }
 
     @Override
-    public String toString() {
-        return "User{" +
-               "id=" + getId() +
-               ", username='" + username + '\'' +
-               ", role='" + role + '\'' +
-               '}';
+    public String getAuditSummary() {
+        return "User: " + username + " with role: " + role;
     }
 }

@@ -1,5 +1,7 @@
 package com.nexus.dao;
 
+import com.nexus.domain.AdminUser;
+import com.nexus.domain.RegularUser;
 import com.nexus.domain.User;
 
 import java.sql.*;
@@ -105,18 +107,36 @@ public class UserDao implements GenericDao<User> {
         return Optional.empty();
     }
 
+    public List<User> findByUsernameContaining(String query) {
+        List<User> users = new ArrayList<>();
+        String sql = "SELECT * FROM users WHERE username LIKE ?";
+        try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
+            pstmt.setString(1, "%" + query + "%");
+            try (ResultSet rs = pstmt.executeQuery()) {
+                while (rs.next()) {
+                    users.add(mapResultSetToUser(rs));
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Error searching users: " + e.getMessage());
+        }
+        return users;
+    }
+
     private User mapResultSetToUser(ResultSet rs) throws SQLException {
         LocalDateTime createdAt = null;
         if (rs.getString("created_at") != null) {
-            // Simplified parsing for SQLite timestamp
             createdAt = rs.getTimestamp("created_at").toLocalDateTime();
         }
-        return new User(
-                rs.getInt("id"),
-                rs.getString("username"),
-                rs.getString("password_hash"),
-                rs.getString("role"),
-                createdAt
-        );
+        String role = rs.getString("role");
+        String username = rs.getString("username");
+        String passwordHash = rs.getString("password_hash");
+        Integer id = rs.getInt("id");
+
+        if ("ADMIN".equalsIgnoreCase(role)) {
+            return new AdminUser(id, username, passwordHash, createdAt);
+        } else {
+            return new RegularUser(id, username, passwordHash, createdAt);
+        }
     }
 }

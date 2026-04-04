@@ -2,7 +2,7 @@ package com.nexus.domain;
 
 import java.time.LocalDateTime;
 
-public class LlmModel extends BaseEntity {
+public class LlmModel extends BaseEntity implements Auditable {
     private String name;
     private String provider;
     private double costPer1kTokens;
@@ -30,6 +30,16 @@ public class LlmModel extends BaseEntity {
     @Override
     public String getEntityDisplayName() {
         return "Model: " + provider + "/" + name;
+    }
+
+    @Override
+    public String getAuditSummary() {
+        return "LLM Registry Updated: " + name + " by " + provider;
+    }
+
+    @Override
+    public LocalDateTime getTimestamp() {
+        return getCreatedAt();
     }
 
     @Override

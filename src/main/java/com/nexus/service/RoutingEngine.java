@@ -8,7 +8,10 @@ import com.nexus.domain.ModelSuitability;
 import com.nexus.domain.OutcomeMemory;
 import com.nexus.domain.TaskType;
 
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 public class RoutingEngine {
@@ -22,25 +25,22 @@ public class RoutingEngine {
         this.llmModelDao = new LlmModelDao();
     }
 
-    /**
-     * Demonstrates Method Overloading.
-     * Selects best model based purely on composite score with no cost constraints.
-     */
     public LlmModel selectOptimalModel(TaskType taskType) {
         return selectOptimalModel(taskType, Double.MAX_VALUE);
     }
 
-    /**
-     * Demonstrates Method Overloading.
-     * Selects best model for a task, keeping cost per 1k tokens below maxCost.
-     */
     public LlmModel selectOptimalModel(TaskType taskType, double maxCost) {
         List<ModelSuitability> suitabilities = suitabilityDao.findByTaskType(taskType);
         if (suitabilities.isEmpty()) {
             throw new IllegalStateException("No explicit model suits found for task type: " + taskType);
         }
 
+        // Use HashMap to group history by modelId for O(1) lookup during scoring
         List<OutcomeMemory> history = outcomeMemoryDao.findByTaskType(taskType);
+        Map<Integer, List<OutcomeMemory>> historyByModel = new HashMap<>();
+        for (OutcomeMemory mem : history) {
+            historyByModel.computeIfAbsent(mem.getModelId(), k -> new ArrayList<>()).add(mem);
+        }
 
         LlmModel bestModel = null;
         double highestScore = -1.0;
@@ -51,10 +51,11 @@ public class RoutingEngine {
             
             LlmModel model = modelOpt.get();
             if (model.getCostPer1kTokens() > maxCost) {
-                continue; // Skip models exceeding budget limit
+                continue;
             }
 
-            double compositeScore = calculateCompositeScore(ms, model.getId(), history);
+            // Pass the pre-grouped history for the specific model
+            double compositeScore = calculateCompositeScore(ms, historyByModel.getOrDefault(model.getId(), new ArrayList<>()));
 
             if (compositeScore > highestScore) {
                 highestScore = compositeScore;
@@ -65,26 +66,15 @@ public class RoutingEngine {
         return bestModel;
     }
 
-    private double calculateCompositeScore(ModelSuitability suitability, Integer modelId, List<OutcomeMemory> history) {
-        // Explicit Upfront Model (The Solution to Discrepancy #1)
+    private double calculateCompositeScore(ModelSuitability suitability, List<OutcomeMemory> modelHistory) {
         double score = suitability.getBaseScore(); 
 
-        // Apply learned intelligence from outcomes
-        double totalQuality = 0;
-        int count = 0;
-
-        for (OutcomeMemory memory : history) {
-            if (memory.getModelId().equals(modelId)) {
+        if (!modelHistory.isEmpty()) {
+            double totalQuality = 0;
+            for (OutcomeMemory memory : modelHistory) {
                 totalQuality += memory.getQualityScore();
-                count++;
             }
-        }
-
-        if (count > 0) {
-            double avgQuality = totalQuality / count;
-            // Historical outcomes sway the base score up or down
-            // For instance, if base score is 0.8, and avg quality is 0.9, 
-            // the composite score climbs towards 0.85
+            double avgQuality = totalQuality / modelHistory.size();
             score = score * 0.5 + avgQuality * 0.5;
         }
 
