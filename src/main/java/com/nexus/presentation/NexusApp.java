@@ -64,6 +64,9 @@ public class NexusApp {
         
         while (true) {
             try {
+                if (!scanner.hasNextLine()) {
+                    return; // Prevent crash when no input is available (e.g. non-interactive shells)
+                }
                 if (loggedInUser == null) {
                     showAuthMenu();
                 } else {
