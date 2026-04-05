@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { HashRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { HelmetProvider } from 'react-helmet-async';
 import './index.css';
 
@@ -35,6 +35,7 @@ function DocsLayout({ sidebarOpen, setSidebarOpen }) {
             <Route path="finance" element={<FinancialPage />} />
             <Route path="cli" element={<CliReferencePage />} />
             <Route path="changelog" element={<ChangelogPage />} />
+            <Route path="*" element={<Navigate to="overview" replace />} />
           </Routes>
         </main>
         <aside className="toc-sidebar">
@@ -60,16 +61,7 @@ export default function App() {
       <HashRouter>
         <Routes>
           <Route path="/" element={<LandingPage />} />
-          <Route path="/overview" element={<DocsLayout sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />} />
-          <Route path="/install" element={<DocsLayout sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />} />
-          <Route path="/quickstart" element={<DocsLayout sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />} />
-          <Route path="/routing" element={<DocsLayout sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />} />
-          <Route path="/memory" element={<DocsLayout sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />} />
-          <Route path="/api-vault" element={<DocsLayout sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />} />
-          <Route path="/finance" element={<DocsLayout sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />} />
-          <Route path="/cli" element={<DocsLayout sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />} />
-          <Route path="/changelog" element={<DocsLayout sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
+          <Route path="/*" element={<DocsLayout sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />} />
         </Routes>
       </HashRouter>
     </HelmetProvider>
