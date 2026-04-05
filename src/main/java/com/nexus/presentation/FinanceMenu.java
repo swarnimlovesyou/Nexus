@@ -1,14 +1,17 @@
 package com.nexus.presentation;
 
-import com.nexus.domain.*;
-import com.nexus.util.TerminalUtils;
-
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+
+import com.nexus.domain.LlmModel;
+import com.nexus.domain.ModelSuitability;
+import com.nexus.domain.OutcomeMemory;
+import com.nexus.domain.TaskType;
+import com.nexus.util.TerminalUtils;
 
 /**
  * Financial Intelligence Dashboard — actual vs optimal spend analysis.

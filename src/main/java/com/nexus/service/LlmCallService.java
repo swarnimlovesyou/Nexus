@@ -1,9 +1,5 @@
 package com.nexus.service;
 
-import com.nexus.domain.LlmModel;
-import com.nexus.domain.Provider;
-import com.nexus.util.TerminalUtils;
-
 import java.net.URI;
 import java.net.URLEncoder;
 import java.net.http.HttpClient;
@@ -17,6 +13,10 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import com.nexus.domain.LlmModel;
+import com.nexus.domain.Provider;
+import com.nexus.util.TerminalUtils;
 
 /**
  * Service to execute provider calls for routed prompts.

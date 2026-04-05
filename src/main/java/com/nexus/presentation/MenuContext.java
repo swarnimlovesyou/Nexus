@@ -1,12 +1,21 @@
 package com.nexus.presentation;
 
-import com.nexus.dao.*;
-import com.nexus.domain.*;
-import com.nexus.exception.NexusException;
-import com.nexus.service.*;
-import com.nexus.util.TerminalUtils;
-
 import java.util.Scanner;
+
+import com.nexus.dao.AuditLogDao;
+import com.nexus.dao.LlmModelDao;
+import com.nexus.dao.OutcomeMemoryDao;
+import com.nexus.dao.SuitabilityDao;
+import com.nexus.domain.TaskType;
+import com.nexus.domain.User;
+import com.nexus.exception.NexusException;
+import com.nexus.service.ApiKeyService;
+import com.nexus.service.LlmCallService;
+import com.nexus.service.MemoryService;
+import com.nexus.service.RoutingEngine;
+import com.nexus.service.SessionService;
+import com.nexus.service.UserService;
+import com.nexus.util.TerminalUtils;
 
 /**
  * Shared context object passed to all menu classes.

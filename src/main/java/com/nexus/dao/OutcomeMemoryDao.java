@@ -1,13 +1,17 @@
 package com.nexus.dao;
 
-import com.nexus.domain.OutcomeMemory;
-import com.nexus.domain.TaskType;
-
-import java.sql.*;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+
+import com.nexus.domain.OutcomeMemory;
+import com.nexus.domain.TaskType;
 
 public class OutcomeMemoryDao implements GenericDao<OutcomeMemory> {
     private final Connection connection;

@@ -1,5 +1,14 @@
 package com.nexus.presentation;
 
+import java.io.Console;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+
 import com.nexus.dao.LlmModelDao;
 import com.nexus.dao.OutcomeMemoryDao;
 import com.nexus.dao.SuitabilityDao;
@@ -13,15 +22,6 @@ import com.nexus.service.RoutingEngine;
 import com.nexus.service.SessionService;
 import com.nexus.service.UserService;
 import com.nexus.util.TerminalUtils;
-
-import java.io.Console;
-import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
 
 /**
  * Supports command-mode workflows such as:

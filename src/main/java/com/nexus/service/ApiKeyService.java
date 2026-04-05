@@ -1,15 +1,15 @@
 package com.nexus.service;
 
+import java.util.Base64;
+import java.util.List;
+import java.util.Optional;
+
 import com.nexus.dao.ApiKeyDao;
 import com.nexus.dao.AuditLogDao;
 import com.nexus.domain.ApiKey;
 import com.nexus.domain.AuditLog;
 import com.nexus.domain.Provider;
 import com.nexus.exception.ValidationException;
-
-import java.util.Base64;
-import java.util.List;
-import java.util.Optional;
 
 public class ApiKeyService {
     private final ApiKeyDao apiKeyDao;

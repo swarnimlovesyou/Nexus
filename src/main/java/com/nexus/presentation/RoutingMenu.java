@@ -1,10 +1,15 @@
 package com.nexus.presentation;
 
-import com.nexus.domain.*;
+import java.util.List;
+
+import com.nexus.domain.AgentSession;
+import com.nexus.domain.LlmModel;
+import com.nexus.domain.Memory;
+import com.nexus.domain.MemoryType;
+import com.nexus.domain.OutcomeMemory;
+import com.nexus.domain.TaskType;
 import com.nexus.service.RoutingEngine;
 import com.nexus.util.TerminalUtils;
-
-import java.util.List;
 
 /**
  * Routing Engine menu — route tasks, explain decisions, what-if, record outcomes.

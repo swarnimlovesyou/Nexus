@@ -1,10 +1,10 @@
 package com.nexus.presentation;
 
+import java.util.List;
+
 import com.nexus.domain.OutcomeMemory;
 import com.nexus.domain.TaskType;
 import com.nexus.util.TerminalUtils;
-
-import java.util.List;
 
 /**
  * Execution History menu.

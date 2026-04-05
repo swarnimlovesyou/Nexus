@@ -1,14 +1,19 @@
 package com.nexus.presentation;
 
-import com.nexus.domain.*;
-import com.nexus.exception.NexusException;
-import com.nexus.util.TerminalUtils;
-
 import java.io.Console;
-import java.util.NoSuchElementException;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.LinkedHashMap;
+import java.util.NoSuchElementException;
+
+import com.nexus.domain.AuditLog;
+import com.nexus.domain.LlmModel;
+import com.nexus.domain.ModelSuitability;
+import com.nexus.domain.Provider;
+import com.nexus.domain.TaskType;
+import com.nexus.domain.User;
+import com.nexus.exception.NexusException;
+import com.nexus.util.TerminalUtils;
 
 /**
  * Nexus Application Bootstrapper and Main Event Loop.

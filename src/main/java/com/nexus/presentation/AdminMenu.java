@@ -1,10 +1,14 @@
 package com.nexus.presentation;
 
-import com.nexus.domain.*;
+import java.util.List;
+
+import com.nexus.domain.LlmModel;
+import com.nexus.domain.ModelSuitability;
+import com.nexus.domain.Provider;
+import com.nexus.domain.TaskType;
+import com.nexus.domain.User;
 import com.nexus.util.SecurityUtils;
 import com.nexus.util.TerminalUtils;
-
-import java.util.List;
 
 /**
  * System Administration menu.

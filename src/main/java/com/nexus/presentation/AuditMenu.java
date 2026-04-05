@@ -1,9 +1,9 @@
 package com.nexus.presentation;
 
+import java.util.List;
+
 import com.nexus.domain.AuditLog;
 import com.nexus.util.TerminalUtils;
-
-import java.util.List;
 
 /**
  * Audit Log Menu.
