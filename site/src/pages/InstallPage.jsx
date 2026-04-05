@@ -23,7 +23,7 @@ export function InstallPage() {
     },
     { 
       label: 'NPM Local Link', 
-      code: '# Optional local CLI wrapper\nnpm install -g .\n\n# Then run\nnexus start' 
+      code: '# Optional local CLI wrapper\nnpm link\n\n# Then run\nnexus start' 
     }
   ];
 
@@ -31,14 +31,14 @@ export function InstallPage() {
     <motion.div className="page" initial="hidden" animate="show" variants={container}>
       <Helmet>
         <title>Installation — Nexus Autopilot</title>
-        <meta name="description" content="Set up Nexus Autopilot on your local machine using NPM, Homebrew, or binary installation." />
+        <meta name="description" content="Set up Nexus Autopilot locally using Maven, the Windows launcher, direct jar execution, or npm link." />
       </Helmet>
 
       <motion.div variants={item}>
         <div className="badge-premium">DEPLOYMENT</div>
         <h1 className="page-title">Installation Guide</h1>
         <p className="page-description">
-          Nexus is designed to be cross-platform and lightweight. Deploy the orchestrator core to your local environment in seconds.
+          Nexus is designed to be local-first and lightweight. Build once, then run via jar, launcher script, or npm-linked command.
         </p>
 
         {/* ── Selection Tabs ────────────────────────── */}
@@ -53,7 +53,7 @@ export function InstallPage() {
              <h2>System Prerequisites</h2>
           </div>
           <p>
-            Before deploying, ensure your local environment meets these minimum high-fidelity requirements for secure LLM orchestration.
+            Before running Nexus, ensure your environment has the required runtime and terminal support.
           </p>
           
           <div className="pillars-grid" style={{ marginTop: '32px' }}>

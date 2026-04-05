@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion';
 import { Helmet } from 'react-helmet-async';
-import { Wallet, BarChart3, TrendingDown, Target, ArrowRight, IndianRupee, Activity, PieChart, TrendingUp, ShieldCheck } from 'lucide-react';
+import { Wallet, BarChart3, TrendingDown, Target, ArrowRight, Activity, PieChart, TrendingUp, ShieldCheck } from 'lucide-react';
 import { CodeBlock, Callout } from '../components/UI';
 
 const container = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.1 }}};
@@ -17,7 +17,7 @@ export function FinancialPage() {
         <div className="badge-premium">ECONOMY ANALYTICS</div>
         <h1 className="page-title">Financial Intelligence</h1>
         <p className="page-description">
-          Real-time economy analytics visualizing cost-vectors and providing predictive budgeting for high-scale agent deployments.
+          Analyze recorded spend, compare it with lower-cost viable routing options, and break down costs by model and task.
         </p>
 
         {/* ── Cost Efficiency ─────────────────────── */}
@@ -63,7 +63,7 @@ export function FinancialPage() {
         {/* ── Model Analytics ──────────────────────── */}
         <section className="doc-section">
            <h2>Model Pricing Adjudication</h2>
-           <p>Nexus analyzes the <strong>Cost-to-Quality Ratio (CQR)</strong> for every configured provider, routing tasks to the most economical high-performance model.</p>
+            <p>Nexus compares model usage from recorded outcomes and highlights where lower-cost options could have satisfied quality constraints.</p>
            
            <div className="table-responsive">
               <table className="custom-table" style={{ width: '100%', marginTop: '16px', borderCollapse: 'collapse' }}>
@@ -98,38 +98,37 @@ export function FinancialPage() {
         <section className="doc-section">
            <div className="section-header-inline">
               <TrendingDown size={20} color="var(--accent)" />
-              <h2>Predictive Budgeting</h2>
+              <h2>Cost Analysis Logic</h2>
            </div>
            <p>
-             The verity engine calculates your <strong>Cost Epochs</strong>, predicting when you might exceed your monthly threshold based on current agentive velocity.
+             Financial analysis is computed from stored execution outcomes. Nexus reports actual spend, estimated optimal spend, and avoidable spend.
            </p>
            
            <CodeBlock 
              lang="java" 
-             code={`// Predictive cost epoch analysis
-double daily_velocity = currentEpoch.getTokens() / daysActive;
-double estimated_eom_bill = daily_velocity * 30 * avgTokenRateUsd;
+             code={`// Spend analysis from recorded outcomes
+double actualSpend = history.stream().mapToDouble(OutcomeMemory::getCost).sum();
+double optimalSpend = estimateOptimalSpend(history, qualityThreshold);
+double avoidableSpend = Math.max(0.0, actualSpend - optimalSpend);
 
-if (estimated_eom_bill > userBudgetUsd) {
-    nexus.throttle(ThrottlingStrategy.CONSERVATIVE_SAVE);
-    System.out.println("ALERT: Predictive budget overflow detected.");
-}`}
+System.out.printf("Actual: $%.6f, Optimal: $%.6f, Avoidable: $%.6f", 
+    actualSpend, optimalSpend, avoidableSpend);`}
            />
         </section>
 
         {/* ── Architectural Pillars ─────────────────── */}
         <section className="doc-section">
-          <h2>Predictive Intelligence</h2>
+          <h2>Cost Insights</h2>
           <div className="pillars-grid">
              <div className="pillar-card">
                <ShieldCheck size={18} fill="rgba(232,116,92,0.1)" />
-               <h4>Zero Debt Policy</h4>
-               <p>Nexus pauses all higher-cost models instantly if budgets are breached, forcing a hard fallback.</p>
+               <h4>Savings Visibility</h4>
+               <p>See exactly how much spend could have been avoided given your historical task and model distribution.</p>
              </div>
              <div className="pillar-card">
                <TrendingUp size={18} fill="rgba(232,116,92,0.1)" />
-               <h4>Margin Optimization</h4>
-               <p>Maximize your agent's ROI by ensuring every token is bought at the best possible market rate.</p>
+               <h4>Range-Based Views</h4>
+               <p>Review lifetime, 7-day, or 30-day windows to spot current trends without losing long-term context.</p>
              </div>
              <div className="pillar-card">
                <LayoutGrid size={18} fill="rgba(232,116,92,0.1)" />

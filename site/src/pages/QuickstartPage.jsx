@@ -30,7 +30,7 @@ export function QuickstartPage() {
           </div>
           <p>
             Nexus doesn't just proxy calls; it <strong>adjudicates</strong> them. Every request is analyzed by the Composite Scoring Engine, 
-            which generates a deterministic value <code>[0.0 - 1.0]</code> for every configured provider based on real-time telemetry from and beyond your environment.
+            which generates a deterministic value <code>[0.0 - 1.0]</code> for every configured provider based on suitability mappings and execution outcomes.
           </p>
           
           <div className="algorithm-card">
@@ -138,7 +138,7 @@ export function QuickstartPage() {
               </Link>
               <Link to="/cli" className="deep-dive-link">
                  <span>CLI Reference &rarr;</span>
-                 <p>Start-up flags list</p>
+                  <p>Interactive and command-mode commands</p>
               </Link>
            </div>
         </section>

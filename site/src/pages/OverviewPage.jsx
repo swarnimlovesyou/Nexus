@@ -19,7 +19,7 @@ export function OverviewPage() {
     <motion.div className="page" initial="hidden" animate="show" variants={container}>
       <Helmet>
         <title>Overview — Nexus Autopilot</title>
-        <meta name="description" content="Nexus is a high-performance local AI orchestrator. Privacy-first LLM routing and intelligent memory vaults." />
+        <meta name="description" content="Nexus is a local-first Java CLI for routing, memory management, API key vaulting, session tracking, and spend analytics." />
       </Helmet>
 
       {/* ── Hero section ────────────────────────── */}
@@ -44,12 +44,12 @@ export function OverviewPage() {
       {/* ── System Status ────────────────────────── */}
       <motion.div variants={item} style={{ marginBottom: '64px' }}>
         <Terminal lines={[
-          '<span className="t-prompt">nexus@local $</span> <span className="t-cmd">status --all</span>',
+          '<span className="t-prompt">nexus@local $</span> <span className="t-cmd">nexus start</span>',
           '<span style="color: var(--accent)">Nexus Engine Adjudicating suitability matrix...</span>',
           '<span style="color: var(--green)">● Nexus Core Online (v1.2.4)</span>',
           '<span style="color: var(--text-muted)">[System] Contextd Memory Vault: typed memory store online</span>',
           '<span style="color: var(--accent); font-weight: 850">★ ROUTING VERDICT: Claude-3.5-Sonnet [Score: 0.982]</span>',
-          '<span style="color: var(--text-muted)">[Metadata] Latency: 1.2s. Cost Epoch: ₹0.42.</span>'
+          '<span style="color: var(--text-muted)">[Metadata] Latency: 1.2s. Estimated cost: $0.0042.</span>'
         ]} />
       </motion.div>
 
@@ -61,7 +61,7 @@ export function OverviewPage() {
         </div>
         <p>
           Nexus doesn't just proxy calls; it <strong>adjudicates</strong> them. Every request is analyzed by the Composite Scoring Engine, 
-          which generates a deterministic value <code>[0.0 - 1.0]</code> for every configured provider based on real-time telemetry from and beyond your environment.
+          which generates a deterministic value <code>[0.0 - 1.0]</code> for every configured provider based on suitability mappings and recorded execution outcomes.
         </p>
 
         <div className="algorithm-card">
@@ -177,7 +177,7 @@ export function OverviewPage() {
            </Link>
            <Link to="/cli" className="deep-dive-link">
               <span>CLI Reference &rarr;</span>
-              <p>Available start-up flags.</p>
+              <p>Interactive and command-mode usage.</p>
            </Link>
         </div>
       </motion.div>

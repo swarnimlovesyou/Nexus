@@ -40,7 +40,7 @@ export function RoutingEnginePage() {
             <Clock size={16} color="var(--accent)" />
             <div style={{ marginTop: '6px' }}>
               <strong style={{ display: 'block', fontSize: '14px', marginBottom: '2px' }}>Latency</strong>
-              <p style={{ fontSize: '12.5px', color: 'var(--text-muted)', margin: 0 }}>Is the model having "traffic" issues? We route away from slow providers in real-time.</p>
+              <p style={{ fontSize: '12.5px', color: 'var(--text-muted)', margin: 0 }}>How quickly did this model respond in prior runs? Slower historical latency lowers its routing score.</p>
             </div>
           </div>
           <div className="callout-premium">

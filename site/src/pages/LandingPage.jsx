@@ -31,17 +31,17 @@ const FEATURES = [
   { 
     id: 'finance',
     title: "Financial Intel", 
-    desc: "Every token has a price. Nexus provides real-time economy analytics, visualizing cost-vectors and providing predictive budgeting for high-scale agent deployments.",
+    desc: "Every token has a price. Nexus compares actual spend versus estimated optimal spend and breaks down costs by model and task.",
     icon: <CreditCard size={24}/>,
     label: "TOKEN ECONOMY",
-    specs: { Granularity: 'Per-Token', Analytics: 'Real-time', Budgeting: 'Predictive' }
+    specs: { Views: 'Lifetime/7d/30d', Breakdown: 'Model + Task', Insight: 'Avoidable spend' }
   },
   { 
     id: 'vault',
     title: "Zero-Trust Vault", 
     desc: "The API Key Vault centralizes provider keys and integrates directly with routing so recommendations stay actionable for your available providers.",
     icon: <Lock size={24}/>,
-    label: "HARDWARE SEC",
+    label: "KEY MANAGEMENT",
     specs: { MaskedView: 'Enabled', OwnershipChecks: 'Enabled', ProviderAware: 'Enabled' }
   },
   { 
@@ -80,7 +80,7 @@ export function LandingPage() {
           initial={{ opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
         >
-          <div className="badge-premium">v1.2.4 — THE AGENTIC UPDATE</div>
+          <div className="badge-premium">v2.0.0 — THE AGENTIC UPDATE</div>
           <h1 className="hero-title">
             The intelligent center for<br />
             <span className="text-glow">Autonomous Orchestration.</span>
@@ -186,11 +186,11 @@ export function LandingPage() {
         </div>
         <div className="marquee">
           <div className="marquee-content">
-            {['OpenAI', 'Anthropic', 'DeepSeek', 'Mistral', 'Gemini', 'Perplexity', 'Meta Llama', 'Cohere'].map((p, i) => (
+            {['OpenAI', 'Anthropic', 'Google Gemini', 'Groq', 'OpenRouter', 'Custom Provider'].map((p, i) => (
               <div key={i} className="marquee-item">{p}</div>
             ))}
             {/* Duplicate for infinite loop */}
-            {['OpenAI', 'Anthropic', 'DeepSeek', 'Mistral', 'Gemini', 'Perplexity', 'Meta Llama', 'Cohere'].map((p, i) => (
+            {['OpenAI', 'Anthropic', 'Google Gemini', 'Groq', 'OpenRouter', 'Custom Provider'].map((p, i) => (
               <div key={`dup-${i}`} className="marquee-item">{p}</div>
             ))}
           </div>
@@ -227,7 +227,7 @@ export function LandingPage() {
            {[
              { title: 'Input Capture', desc: 'Agent submits task. Nexus calculates fingerprint and context requirements.', icon: <SquareCode size={22}/> },
              { title: 'Adjudication', desc: 'Verity engine evaluates the provider matrix for optimal cost-to-quality ratio.', icon: <Workflow size={22}/> },
-             { title: 'Execution', desc: 'Secure, encrypted request dispatched to the chosen LLM provider.', icon: <Terminal size={22}/> },
+             { title: 'Execution', desc: 'Request is dispatched to the chosen provider (or simulated when live calls are unavailable).', icon: <Terminal size={22}/> },
              { title: 'Synthesis', desc: 'Result is captured, persisted to Contextd, and returned to the workflow.', icon: <Database size={22}/> },
            ].map((step, i) => (
              <div key={i} className="flow-step">
