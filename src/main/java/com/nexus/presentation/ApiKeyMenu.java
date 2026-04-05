@@ -16,19 +16,23 @@ public class ApiKeyMenu {
     public ApiKeyMenu(MenuContext ctx) { this.ctx = ctx; }
 
     public void show() {
-        TerminalUtils.printHeader("API Key Vault");
-        TerminalUtils.printInfo("Keys are XOR-encoded and stored locally. Never transmitted. Known limitation: not AES-encrypted.");
-        System.out.println();
-        System.out.println("  " + TerminalUtils.AMBER + "1" + TerminalUtils.RESET + "  Add new API key");
-        System.out.println("  " + TerminalUtils.AMBER + "2" + TerminalUtils.RESET + "  View my keys");
-        System.out.println("  " + TerminalUtils.AMBER + "3" + TerminalUtils.RESET + "  Delete a key");
-        System.out.println("  " + TerminalUtils.AMBER + "B" + TerminalUtils.RESET + "  Back");
-        System.out.println();
-        TerminalUtils.printPrompt(ctx.username());
-        switch (ctx.scanner().nextLine().trim().toUpperCase()) {
-            case "1" -> ctx.runWithDaoGuard("Could not store API key. Database operation failed; no changes were saved.", this::addKey);
-            case "2" -> ctx.runWithDaoGuard("Unable to load API keys right now. Please try again.", this::viewKeys);
-            case "3" -> ctx.runWithDaoGuard("Could not delete API key. Database operation failed; no changes were saved.", this::deleteKey);
+        while (true) {
+            TerminalUtils.printHeader("API Key Vault");
+            TerminalUtils.printInfo("Keys are XOR-encoded and stored locally. Never transmitted. Known limitation: not AES-encrypted.");
+            System.out.println();
+            System.out.println("  " + TerminalUtils.AMBER + "1" + TerminalUtils.RESET + "  Add new API key");
+            System.out.println("  " + TerminalUtils.AMBER + "2" + TerminalUtils.RESET + "  View my keys");
+            System.out.println("  " + TerminalUtils.AMBER + "3" + TerminalUtils.RESET + "  Delete a key");
+            System.out.println("  " + TerminalUtils.AMBER + "B" + TerminalUtils.RESET + "  Back");
+            System.out.println();
+            TerminalUtils.printPrompt(ctx.username());
+            switch (ctx.scanner().nextLine().trim().toUpperCase()) {
+                case "1" -> ctx.runWithDaoGuard("Could not store API key. Database operation failed; no changes were saved.", this::addKey);
+                case "2" -> ctx.runWithDaoGuard("Unable to load API keys right now. Please try again.", this::viewKeys);
+                case "3" -> ctx.runWithDaoGuard("Could not delete API key. Database operation failed; no changes were saved.", this::deleteKey);
+                case "B" -> { return; }
+                default  -> TerminalUtils.printError("Unknown option.");
+            }
         }
     }
 

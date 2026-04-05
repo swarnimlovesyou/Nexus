@@ -22,27 +22,31 @@ public class RoutingMenu {
     public RoutingMenu(MenuContext ctx) { this.ctx = ctx; }
 
     public void show() {
-        TerminalUtils.printHeader("Intelligent Routing Engine");
-        System.out.println("  " + TerminalUtils.AMBER + "1" + TerminalUtils.RESET + "  Route a Task (select best model)");
-        System.out.println("  " + TerminalUtils.AMBER + "2" + TerminalUtils.RESET + "  Explain Routing  " + TerminalUtils.GRAY + "(score breakdown per model)" + TerminalUtils.RESET);
-        System.out.println("  " + TerminalUtils.AMBER + "3" + TerminalUtils.RESET + "  What-If Analysis  " + TerminalUtils.GRAY + "(different budget caps)" + TerminalUtils.RESET);
-        System.out.println("  " + TerminalUtils.AMBER + "4" + TerminalUtils.RESET + "  Record Execution Outcome");
-        System.out.println("  " + TerminalUtils.AMBER + "5" + TerminalUtils.RESET + "  Test Live LLM Call  " + TerminalUtils.GRAY + "(real HTTP when available)" + TerminalUtils.RESET);
-        System.out.println("  " + TerminalUtils.AMBER + "6" + TerminalUtils.RESET + "  Start Session Context");
-        System.out.println("  " + TerminalUtils.AMBER + "7" + TerminalUtils.RESET + "  Close Active Session");
-        System.out.println("  " + TerminalUtils.AMBER + "8" + TerminalUtils.RESET + "  View My Sessions");
-        System.out.println("  " + TerminalUtils.AMBER + "B" + TerminalUtils.RESET + "  Back");
-        System.out.println();
-        TerminalUtils.printPrompt(ctx.username());
-        switch (ctx.scanner().nextLine().trim().toUpperCase()) {
-            case "1" -> ctx.runWithDaoGuard("Unable to route task right now. Please try again.", this::routeTask);
-            case "2" -> ctx.runWithDaoGuard("Unable to explain routing right now. Please try again.", this::explainRouting);
-            case "3" -> ctx.runWithDaoGuard("Unable to run what-if analysis right now. Please try again.", this::whatIfAnalysis);
-            case "4" -> ctx.runWithDaoGuard("Could not record outcome. Database operation failed; no changes were saved.", this::recordOutcome);
-            case "5" -> ctx.runWithDaoGuard("Unable to complete live call flow right now due to a database issue.", this::testLiveCall);
-            case "6" -> ctx.runWithDaoGuard("Could not start session. Database operation failed; no changes were saved.", this::startSession);
-            case "7" -> ctx.runWithDaoGuard("Could not close session. Database operation failed; no changes were saved.", this::closeSession);
-            case "8" -> ctx.runWithDaoGuard("Unable to load sessions right now. Please try again.", this::viewSessions);
+        while (true) {
+            TerminalUtils.printHeader("Intelligent Routing Engine");
+            System.out.println("  " + TerminalUtils.AMBER + "1" + TerminalUtils.RESET + "  Route a Task (select best model)");
+            System.out.println("  " + TerminalUtils.AMBER + "2" + TerminalUtils.RESET + "  Explain Routing  " + TerminalUtils.GRAY + "(score breakdown per model)" + TerminalUtils.RESET);
+            System.out.println("  " + TerminalUtils.AMBER + "3" + TerminalUtils.RESET + "  What-If Analysis  " + TerminalUtils.GRAY + "(different budget caps)" + TerminalUtils.RESET);
+            System.out.println("  " + TerminalUtils.AMBER + "4" + TerminalUtils.RESET + "  Record Execution Outcome");
+            System.out.println("  " + TerminalUtils.AMBER + "5" + TerminalUtils.RESET + "  Test Live LLM Call  " + TerminalUtils.GRAY + "(real HTTP when available)" + TerminalUtils.RESET);
+            System.out.println("  " + TerminalUtils.AMBER + "6" + TerminalUtils.RESET + "  Start Session Context");
+            System.out.println("  " + TerminalUtils.AMBER + "7" + TerminalUtils.RESET + "  Close Active Session");
+            System.out.println("  " + TerminalUtils.AMBER + "8" + TerminalUtils.RESET + "  View My Sessions");
+            System.out.println("  " + TerminalUtils.AMBER + "B" + TerminalUtils.RESET + "  Back");
+            System.out.println();
+            TerminalUtils.printPrompt(ctx.username());
+            switch (ctx.scanner().nextLine().trim().toUpperCase()) {
+                case "1" -> ctx.runWithDaoGuard("Unable to route task right now. Please try again.", this::routeTask);
+                case "2" -> ctx.runWithDaoGuard("Unable to explain routing right now. Please try again.", this::explainRouting);
+                case "3" -> ctx.runWithDaoGuard("Unable to run what-if analysis right now. Please try again.", this::whatIfAnalysis);
+                case "4" -> ctx.runWithDaoGuard("Could not record outcome. Database operation failed; no changes were saved.", this::recordOutcome);
+                case "5" -> ctx.runWithDaoGuard("Unable to complete live call flow right now due to a database issue.", this::testLiveCall);
+                case "6" -> ctx.runWithDaoGuard("Could not start session. Database operation failed; no changes were saved.", this::startSession);
+                case "7" -> ctx.runWithDaoGuard("Could not close session. Database operation failed; no changes were saved.", this::closeSession);
+                case "8" -> ctx.runWithDaoGuard("Unable to load sessions right now. Please try again.", this::viewSessions);
+                case "B" -> { return; }
+                default  -> TerminalUtils.printError("Unknown option.");
+            }
         }
     }
 

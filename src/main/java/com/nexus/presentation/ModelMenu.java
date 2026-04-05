@@ -16,17 +16,21 @@ public class ModelMenu {
     public ModelMenu(MenuContext ctx) { this.ctx = ctx; }
 
     public void show() {
-        TerminalUtils.printHeader("Model Discovery");
-        System.out.println("  " + TerminalUtils.AMBER + "1" + TerminalUtils.RESET + "  List all models");
-        System.out.println("  " + TerminalUtils.AMBER + "2" + TerminalUtils.RESET + "  Filter by provider");
-        System.out.println("  " + TerminalUtils.AMBER + "3" + TerminalUtils.RESET + "  View suitability matrix");
-        System.out.println("  " + TerminalUtils.AMBER + "B" + TerminalUtils.RESET + "  Back");
-        System.out.println();
-        TerminalUtils.printPrompt(ctx.username());
-        switch (ctx.scanner().nextLine().trim().toUpperCase()) {
-            case "1" -> ctx.runWithDaoGuard("Unable to load models right now. Please try again.", this::listAllModels);
-            case "2" -> ctx.runWithDaoGuard("Unable to filter models by provider right now. Please try again.", this::filterByProvider);
-            case "3" -> ctx.runWithDaoGuard("Unable to load suitability matrix right now. Please try again.", this::suitabilityMatrix);
+        while (true) {
+            TerminalUtils.printHeader("Model Discovery");
+            System.out.println("  " + TerminalUtils.AMBER + "1" + TerminalUtils.RESET + "  List all models");
+            System.out.println("  " + TerminalUtils.AMBER + "2" + TerminalUtils.RESET + "  Filter by provider");
+            System.out.println("  " + TerminalUtils.AMBER + "3" + TerminalUtils.RESET + "  View suitability matrix");
+            System.out.println("  " + TerminalUtils.AMBER + "B" + TerminalUtils.RESET + "  Back");
+            System.out.println();
+            TerminalUtils.printPrompt(ctx.username());
+            switch (ctx.scanner().nextLine().trim().toUpperCase()) {
+                case "1" -> ctx.runWithDaoGuard("Unable to load models right now. Please try again.", this::listAllModels);
+                case "2" -> ctx.runWithDaoGuard("Unable to filter models by provider right now. Please try again.", this::filterByProvider);
+                case "3" -> ctx.runWithDaoGuard("Unable to load suitability matrix right now. Please try again.", this::suitabilityMatrix);
+                case "B" -> { return; }
+                default  -> TerminalUtils.printError("Unknown option.");
+            }
         }
     }
 

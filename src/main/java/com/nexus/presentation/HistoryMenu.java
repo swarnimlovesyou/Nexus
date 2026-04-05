@@ -16,27 +16,30 @@ public class HistoryMenu {
     public HistoryMenu(MenuContext ctx) { this.ctx = ctx; }
 
     public void show() {
-        TerminalUtils.printHeader("Execution History");
-        System.out.println("  " + TerminalUtils.AMBER + "1" + TerminalUtils.RESET + "  All executions");
-        System.out.println("  " + TerminalUtils.AMBER + "2" + TerminalUtils.RESET + "  Filter by task type");
-        System.out.println("  " + TerminalUtils.AMBER + "3" + TerminalUtils.RESET + "  Filter by model ID");
-        System.out.println("  " + TerminalUtils.AMBER + "4" + TerminalUtils.RESET + "  Search by date range");
-        System.out.println("  " + TerminalUtils.AMBER + "5" + TerminalUtils.RESET + "  Update execution quality score");
-        System.out.println("  " + TerminalUtils.AMBER + "6" + TerminalUtils.RESET + "  Delete execution record");
-        System.out.println("  " + TerminalUtils.AMBER + "B" + TerminalUtils.RESET + "  Back");
-        System.out.println();
-        TerminalUtils.printPrompt(ctx.username());
+        while (true) {
+            TerminalUtils.printHeader("Execution History");
+            System.out.println("  " + TerminalUtils.AMBER + "1" + TerminalUtils.RESET + "  All executions");
+            System.out.println("  " + TerminalUtils.AMBER + "2" + TerminalUtils.RESET + "  Filter by task type");
+            System.out.println("  " + TerminalUtils.AMBER + "3" + TerminalUtils.RESET + "  Filter by model ID");
+            System.out.println("  " + TerminalUtils.AMBER + "4" + TerminalUtils.RESET + "  Search by date range");
+            System.out.println("  " + TerminalUtils.AMBER + "5" + TerminalUtils.RESET + "  Update execution quality score");
+            System.out.println("  " + TerminalUtils.AMBER + "6" + TerminalUtils.RESET + "  Delete execution record");
+            System.out.println("  " + TerminalUtils.AMBER + "B" + TerminalUtils.RESET + "  Back");
+            System.out.println();
+            TerminalUtils.printPrompt(ctx.username());
 
-        String choice = ctx.scanner().nextLine().trim().toUpperCase();
-        if (choice.equals("B")) return;
+            String choice = ctx.scanner().nextLine().trim().toUpperCase();
+            if (choice.equals("B")) return;
 
-        switch (choice) {
-            case "2" -> ctx.runWithDaoGuard("Unable to filter history by task right now. Please try again.", this::filterByTask);
-            case "3" -> ctx.runWithDaoGuard("Unable to filter history by model right now. Please try again.", this::filterByModel);
-            case "4" -> ctx.runWithDaoGuard("Unable to search history by date right now. Please try again.", this::searchByDateRange);
-            case "5" -> ctx.runWithDaoGuard("Could not update execution quality. Database operation failed; no changes were saved.", this::updateQuality);
-            case "6" -> ctx.runWithDaoGuard("Could not delete execution record. Database operation failed; no changes were saved.", this::deleteRecord);
-            default -> ctx.runWithDaoGuard("Unable to load execution history right now. Please try again.", this::listAllHistory);
+            switch (choice) {
+                case "1" -> ctx.runWithDaoGuard("Unable to load execution history right now. Please try again.", this::listAllHistory);
+                case "2" -> ctx.runWithDaoGuard("Unable to filter history by task right now. Please try again.", this::filterByTask);
+                case "3" -> ctx.runWithDaoGuard("Unable to filter history by model right now. Please try again.", this::filterByModel);
+                case "4" -> ctx.runWithDaoGuard("Unable to search history by date right now. Please try again.", this::searchByDateRange);
+                case "5" -> ctx.runWithDaoGuard("Could not update execution quality. Database operation failed; no changes were saved.", this::updateQuality);
+                case "6" -> ctx.runWithDaoGuard("Could not delete execution record. Database operation failed; no changes were saved.", this::deleteRecord);
+                default -> TerminalUtils.printError("Unknown option.");
+            }
         }
     }
 

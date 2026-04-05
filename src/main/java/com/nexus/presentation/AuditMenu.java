@@ -15,18 +15,25 @@ public class AuditMenu {
     public AuditMenu(MenuContext ctx) { this.ctx = ctx; }
 
     public void show() {
-        TerminalUtils.printHeader("Security Audit Log");
-        System.out.println("  " + TerminalUtils.AMBER + "1" + TerminalUtils.RESET + "  View all recent logs");
-        System.out.println("  " + TerminalUtils.AMBER + "2" + TerminalUtils.RESET + "  Filter by Action Type");
-        System.out.println("  " + TerminalUtils.AMBER + "3" + TerminalUtils.RESET + "  Search records");
-        System.out.println("  " + TerminalUtils.AMBER + "B" + TerminalUtils.RESET + "  Back");
-        System.out.println();
-        TerminalUtils.printPrompt(ctx.username());
+        while (true) {
+            TerminalUtils.printHeader("Security Audit Log");
+            System.out.println("  " + TerminalUtils.AMBER + "1" + TerminalUtils.RESET + "  View all recent logs");
+            System.out.println("  " + TerminalUtils.AMBER + "2" + TerminalUtils.RESET + "  Filter by Action Type");
+            System.out.println("  " + TerminalUtils.AMBER + "3" + TerminalUtils.RESET + "  Search records");
+            System.out.println("  " + TerminalUtils.AMBER + "B" + TerminalUtils.RESET + "  Back");
+            System.out.println();
+            TerminalUtils.printPrompt(ctx.username());
 
-        String choice = ctx.scanner().nextLine().trim().toUpperCase();
-        if (choice.equals("B")) return;
+            String choice = ctx.scanner().nextLine().trim().toUpperCase();
+            if (choice.equals("B")) return;
 
-        ctx.runWithDaoGuard("Unable to load audit logs right now. Please try again.", () -> renderAuditSelection(choice));
+            if (!choice.equals("1") && !choice.equals("2") && !choice.equals("3")) {
+                TerminalUtils.printError("Unknown option.");
+                continue;
+            }
+
+            ctx.runWithDaoGuard("Unable to load audit logs right now. Please try again.", () -> renderAuditSelection(choice));
+        }
     }
 
     private void renderAuditSelection(String choice) {

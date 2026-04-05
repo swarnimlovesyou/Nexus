@@ -17,31 +17,35 @@ public class MemoryMenu {
     public MemoryMenu(MenuContext ctx) { this.ctx = ctx; }
 
     public void show() {
-        TerminalUtils.printHeader("Memory Vault  ·  Contextd Layer");
-        System.out.println("  " + TerminalUtils.AMBER + "1" + TerminalUtils.RESET + "  Store new memory");
-        System.out.println("  " + TerminalUtils.AMBER + "2" + TerminalUtils.RESET + "  Recall memories  " + TerminalUtils.GRAY + "(keyword search, ranked by confidence × recency)" + TerminalUtils.RESET);
-        System.out.println("  " + TerminalUtils.AMBER + "3" + TerminalUtils.RESET + "  View full vault");
-        System.out.println("  " + TerminalUtils.AMBER + "4" + TerminalUtils.RESET + "  Forget memory  " + TerminalUtils.GRAY + "(hard delete by ID)" + TerminalUtils.RESET);
-        System.out.println("  " + TerminalUtils.AMBER + "5" + TerminalUtils.RESET + "  Contradiction graph");
-        System.out.println("  " + TerminalUtils.AMBER + "6" + TerminalUtils.RESET + "  Run decay pass  " + TerminalUtils.GRAY + "(-5% confidence on stale memories)" + TerminalUtils.RESET);
-        System.out.println("  " + TerminalUtils.AMBER + "7" + TerminalUtils.RESET + "  Prune expired / low-confidence");
-        System.out.println("  " + TerminalUtils.AMBER + "8" + TerminalUtils.RESET + "  Filter by memory type");
-        System.out.println("  " + TerminalUtils.AMBER + "9" + TerminalUtils.RESET + "  Edit memory content  " + TerminalUtils.GRAY + "(update by ID)" + TerminalUtils.RESET);
-        System.out.println("  " + TerminalUtils.AMBER + "E" + TerminalUtils.RESET + "  Export vault to CSV");
-        System.out.println("  " + TerminalUtils.AMBER + "B" + TerminalUtils.RESET + "  Back");
-        System.out.println();
-        TerminalUtils.printPrompt(ctx.username());
-        switch (ctx.scanner().nextLine().trim().toUpperCase()) {
-            case "1" -> ctx.runWithDaoGuard("Could not store memory. Database operation failed; no changes were saved.", this::storeMemory);
-            case "2" -> ctx.runWithDaoGuard("Unable to recall memories right now. Please try again.", this::recallMemories);
-            case "3" -> ctx.runWithDaoGuard("Unable to load memory vault right now. Please try again.", this::viewVault);
-            case "4" -> ctx.runWithDaoGuard("Could not forget memory. Database operation failed; no changes were saved.", this::forgetMemory);
-            case "5" -> ctx.runWithDaoGuard("Unable to load contradiction graph right now. Please try again.", this::contradictionGraph);
-            case "6" -> ctx.runWithDaoGuard("Could not run decay pass. Database operation failed; no changes were saved.", this::runDecay);
-            case "7" -> ctx.runWithDaoGuard("Could not prune memories. Database operation failed; no changes were saved.", this::pruneMemories);
-            case "8" -> ctx.runWithDaoGuard("Unable to filter memories right now. Please try again.", this::filterByType);
-            case "9" -> ctx.runWithDaoGuard("Could not edit memory. Database operation failed; no changes were saved.", this::editMemory);
-            case "E" -> ctx.runWithDaoGuard("Could not export vault right now because memory data could not be loaded.", this::exportVault);
+        while (true) {
+            TerminalUtils.printHeader("Memory Vault  ·  Contextd Layer");
+            System.out.println("  " + TerminalUtils.AMBER + "1" + TerminalUtils.RESET + "  Store new memory");
+            System.out.println("  " + TerminalUtils.AMBER + "2" + TerminalUtils.RESET + "  Recall memories  " + TerminalUtils.GRAY + "(keyword search, ranked by confidence × recency)" + TerminalUtils.RESET);
+            System.out.println("  " + TerminalUtils.AMBER + "3" + TerminalUtils.RESET + "  View full vault");
+            System.out.println("  " + TerminalUtils.AMBER + "4" + TerminalUtils.RESET + "  Forget memory  " + TerminalUtils.GRAY + "(hard delete by ID)" + TerminalUtils.RESET);
+            System.out.println("  " + TerminalUtils.AMBER + "5" + TerminalUtils.RESET + "  Contradiction graph");
+            System.out.println("  " + TerminalUtils.AMBER + "6" + TerminalUtils.RESET + "  Run decay pass  " + TerminalUtils.GRAY + "(-5% confidence on stale memories)" + TerminalUtils.RESET);
+            System.out.println("  " + TerminalUtils.AMBER + "7" + TerminalUtils.RESET + "  Prune expired / low-confidence");
+            System.out.println("  " + TerminalUtils.AMBER + "8" + TerminalUtils.RESET + "  Filter by memory type");
+            System.out.println("  " + TerminalUtils.AMBER + "9" + TerminalUtils.RESET + "  Edit memory content  " + TerminalUtils.GRAY + "(update by ID)" + TerminalUtils.RESET);
+            System.out.println("  " + TerminalUtils.AMBER + "E" + TerminalUtils.RESET + "  Export vault to CSV");
+            System.out.println("  " + TerminalUtils.AMBER + "B" + TerminalUtils.RESET + "  Back");
+            System.out.println();
+            TerminalUtils.printPrompt(ctx.username());
+            switch (ctx.scanner().nextLine().trim().toUpperCase()) {
+                case "1" -> ctx.runWithDaoGuard("Could not store memory. Database operation failed; no changes were saved.", this::storeMemory);
+                case "2" -> ctx.runWithDaoGuard("Unable to recall memories right now. Please try again.", this::recallMemories);
+                case "3" -> ctx.runWithDaoGuard("Unable to load memory vault right now. Please try again.", this::viewVault);
+                case "4" -> ctx.runWithDaoGuard("Could not forget memory. Database operation failed; no changes were saved.", this::forgetMemory);
+                case "5" -> ctx.runWithDaoGuard("Unable to load contradiction graph right now. Please try again.", this::contradictionGraph);
+                case "6" -> ctx.runWithDaoGuard("Could not run decay pass. Database operation failed; no changes were saved.", this::runDecay);
+                case "7" -> ctx.runWithDaoGuard("Could not prune memories. Database operation failed; no changes were saved.", this::pruneMemories);
+                case "8" -> ctx.runWithDaoGuard("Unable to filter memories right now. Please try again.", this::filterByType);
+                case "9" -> ctx.runWithDaoGuard("Could not edit memory. Database operation failed; no changes were saved.", this::editMemory);
+                case "E" -> ctx.runWithDaoGuard("Could not export vault right now because memory data could not be loaded.", this::exportVault);
+                case "B" -> { return; }
+                default  -> TerminalUtils.printError("Unknown option.");
+            }
         }
     }
 
