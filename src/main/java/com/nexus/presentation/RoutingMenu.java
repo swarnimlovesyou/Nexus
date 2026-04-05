@@ -59,6 +59,8 @@ public class RoutingMenu {
         if (best == null) { TerminalUtils.printError("No suitable model found."); return; }
 
         System.out.println();
+        TerminalUtils.printTopology();
+        
         TerminalUtils.printBox("ROUTING VERDICT", String.join("\n",
             TerminalUtils.BOLD + "Model    " + TerminalUtils.RESET + best.getName(),
             TerminalUtils.BOLD + "Provider " + TerminalUtils.RESET + best.getProvider(),
@@ -94,6 +96,13 @@ public class RoutingMenu {
             };
         }
         TerminalUtils.printTable(headers, rows);
+        System.out.println();
+        
+        // Show Visual Distribution
+        java.util.LinkedHashMap<String, Double> chartData = new java.util.LinkedHashMap<>();
+        for (var b : breakdown) chartData.put(b.model().getName(), b.composite());
+        TerminalUtils.printHorizontalChart("Composite Score Distribution", chartData);
+        
         System.out.println();
         TerminalUtils.printInfo("Weights: Suitability×35%  Quality×30%  Latency×15%  Cost×20%");
         TerminalUtils.printInfo("Key? = Whether you have an API key stored for that provider.");

@@ -50,6 +50,7 @@ public class TerminalUtils {
         System.out.printf("  %-12s  %s%n", AMBER + "start" + RESET, "Launch the interactive Nexus autopilot CLI");
         System.out.printf("  %-12s  %s%n", AMBER + "session" + RESET, "Manage DB-backed coding sessions from command mode");
         System.out.printf("  %-12s  %s%n", AMBER + "finance" + RESET, "Generate spend analysis reports from command mode");
+        System.out.printf("  %-12s  %s%n", AMBER + "health" + RESET, "Run global connectivity diagnostics for all models");
         System.out.println();
         System.out.println(BOLD + "EXAMPLES" + RESET);
         System.out.println("  " + GRAY + "nexus start" + RESET);
@@ -58,6 +59,25 @@ public class TerminalUtils {
         System.out.println("  " + GRAY + "nexus finance report --user admin --range 30d" + RESET);
         System.out.println();
         System.out.println(GRAY + "Docs: https://github.com/swarnimlovesyou/Nexus" + RESET);
+        System.out.println();
+    }
+
+    public static void printTopology() {
+        System.out.println();
+        System.out.println(BOLD + "  SYSTEM TOPOLOGY OVERVIEW" + RESET);
+        System.out.println(GRAY + "  ────────────────────────────────────────────────────────" + RESET);
+        System.out.println("      " + CYAN + "[ User Request ]" + RESET);
+        System.out.println("             " + AMBER + "│" + RESET);
+        System.out.println("             " + AMBER + "▼" + RESET);
+        System.out.println("      " + AMBER + "╭─────────────╮" + RESET + "      " + GREEN + "╭─────────────╮" + RESET);
+        System.out.println("      " + AMBER + "│   NEXUS     │" + RESET + " ◄─── " + GREEN + "│  CONTEXTD   │" + RESET);
+        System.out.println("      " + AMBER + "│  ROUTER     │" + RESET + " ───► " + GREEN + "│  (SQLite)   │" + RESET);
+        System.out.println("      " + AMBER + "╰─────────────╯" + RESET + "      " + GREEN + "╰─────────────╯" + RESET);
+        System.out.println("             " + AMBER + "│" + RESET);
+        System.out.println("     " + GRAY + "┌───────┼───────┐" + RESET);
+        System.out.println("     " + GRAY + "│" + RESET + "       " + GRAY + "│" + RESET + "       " + GRAY + "│" + RESET);
+        System.out.println("  " + GOLD + "[GPT-4]" + RESET + "   " + GOLD + "[CLAUDE]" + RESET + "   " + GOLD + "[GEMINI]" + RESET);
+        System.out.println(GRAY + "  ────────────────────────────────────────────────────────" + RESET);
         System.out.println();
     }
 
@@ -145,6 +165,16 @@ public class TerminalUtils {
         filled = Math.max(0, Math.min(width, filled));
         String bar = AMBER + "█".repeat(filled) + GRAY + "░".repeat(width - filled) + RESET;
         return bar + " " + GOLD + String.format("%.0f%%", max == 0 ? 0 : (value / max) * 100) + RESET;
+    }
+
+    public static void printHorizontalChart(String title, java.util.Map<String, Double> data) {
+        System.out.println(BOLD + "  " + title + RESET);
+        int maxKeyLen = data.keySet().stream().mapToInt(String::length).max().orElse(0);
+        for (var entry : data.entrySet()) {
+            String label = padRight(entry.getKey(), maxKeyLen);
+            System.out.print("  " + GRAY + label + RESET + "  ");
+            System.out.println(progressBar(entry.getValue(), 1.0, 20));
+        }
     }
 
     public static String confidenceBar(double confidence) {

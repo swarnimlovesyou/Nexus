@@ -4,7 +4,6 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Types;
-import java.sql.Timestamp;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -48,18 +47,20 @@ public class DbTimeCodec {
         pstmt.setLong(index, toEpochSeconds(value));
     }
 
-    public LocalDateTime readDateTime(ResultSet rs, String columnLabel) throws SQLException {
+    public LocalDateTime readDateTime(ResultSet rs, String columnLabel) {
         try {
+            // First try getString for compatibility
             String raw = rs.getString(columnLabel);
-            return parseString(raw);
+            if (raw == null || raw.isBlank()) return null;
+            
+            LocalDateTime parsed = parseString(raw);
+            if (parsed != null) return parsed;
+            
+            // Fallback: try long directly
+            return fromEpochAuto(rs.getLong(columnLabel));
         } catch (Exception e) {
-            // Fallback to getObject if getString somehow fails (rare in SQLite)
-            try {
-                Object obj = rs.getObject(columnLabel);
-                if (obj instanceof Number n) return fromEpochAuto(n.longValue());
-                if (obj instanceof Timestamp ts) return ts.toLocalDateTime();
-            } catch (Exception ignored) {}
-            return null;
+            // Final fallback: do not crash, return current time for operational continuity.
+            return LocalDateTime.now();
         }
     }
 

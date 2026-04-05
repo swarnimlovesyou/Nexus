@@ -17,7 +17,7 @@ public class MenuDaoFailureMessageWiringTest {
 
     @Test
     public void memoryForgetShouldUseClearDaoFailureMessage() {
-        MessageCaptureMenuContext ctx = new MessageCaptureMenuContext("4\n", regularUser());
+        MessageCaptureMenuContext ctx = new MessageCaptureMenuContext("4\nB\n", regularUser());
 
         new MemoryMenu(ctx).show();
 
@@ -29,7 +29,7 @@ public class MenuDaoFailureMessageWiringTest {
 
     @Test
     public void historyQualityUpdateShouldUseClearDaoFailureMessage() {
-        MessageCaptureMenuContext ctx = new MessageCaptureMenuContext("5\n", regularUser());
+        MessageCaptureMenuContext ctx = new MessageCaptureMenuContext("5\nB\n", regularUser());
 
         new HistoryMenu(ctx).show();
 
@@ -41,7 +41,7 @@ public class MenuDaoFailureMessageWiringTest {
 
     @Test
     public void routingStartSessionShouldUseClearDaoFailureMessage() {
-        MessageCaptureMenuContext ctx = new MessageCaptureMenuContext("6\n", regularUser());
+        MessageCaptureMenuContext ctx = new MessageCaptureMenuContext("6\nB\n", regularUser());
 
         new RoutingMenu(ctx).show();
 

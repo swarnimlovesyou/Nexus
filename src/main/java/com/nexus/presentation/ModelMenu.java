@@ -21,6 +21,7 @@ public class ModelMenu {
             System.out.println("  " + TerminalUtils.AMBER + "1" + TerminalUtils.RESET + "  List all models");
             System.out.println("  " + TerminalUtils.AMBER + "2" + TerminalUtils.RESET + "  Filter by provider");
             System.out.println("  " + TerminalUtils.AMBER + "3" + TerminalUtils.RESET + "  View suitability matrix");
+            System.out.println("  " + TerminalUtils.AMBER + "4" + TerminalUtils.RESET + "  Live health probe  " + TerminalUtils.GRAY + "(ping providers)" + TerminalUtils.RESET);
             System.out.println("  " + TerminalUtils.AMBER + "B" + TerminalUtils.RESET + "  Back");
             System.out.println();
             TerminalUtils.printPrompt(ctx.username());
@@ -28,6 +29,7 @@ public class ModelMenu {
                 case "1" -> ctx.runWithDaoGuard("Unable to load models right now. Please try again.", this::listAllModels);
                 case "2" -> ctx.runWithDaoGuard("Unable to filter models by provider right now. Please try again.", this::filterByProvider);
                 case "3" -> ctx.runWithDaoGuard("Unable to load suitability matrix right now. Please try again.", this::suitabilityMatrix);
+                case "4" -> ctx.runWithDaoGuard("Health check flow failed. Database or network issue.", this::performHealthCheck);
                 case "B" -> { return; }
                 default  -> TerminalUtils.printError("Unknown option.");
             }
@@ -82,5 +84,36 @@ public class ModelMenu {
         }
         System.out.println();
         TerminalUtils.printTable(headers, rows);
+    }
+
+    private void performHealthCheck() {
+        TerminalUtils.printSeparator("LIVE HEALTH PROBE");
+        List<LlmModel> models = ctx.modelDao().findAll();
+        if (models.isEmpty()) { TerminalUtils.printInfo("No models to probe."); return; }
+        
+        System.out.println("  Select a model to probe:");
+        for (int i = 0; i < models.size(); i++)
+            System.out.printf("  " + TerminalUtils.AMBER + "%d" + TerminalUtils.RESET + "  %s (%s)%n", i+1, models.get(i).getName(), models.get(i).getProvider());
+        
+        System.out.print("  Model # (1-" + models.size() + "): ");
+        int midx = ctx.safeInt(ctx.scanner().nextLine()) - 1;
+        if (midx < 0 || midx >= models.size()) { TerminalUtils.printError("Invalid selection."); return; }
+        LlmModel model = models.get(midx);
+
+        TerminalUtils.spinner("Pinging " + model.getProvider() + " endpoint...", 1200);
+        com.nexus.service.LlmCallService.HealthReport report = ctx.llmCallService().checkHealth(ctx.userId(), model);
+        
+        System.out.println();
+        if (report.reachable()) {
+            TerminalUtils.printSuccess("Status: " + TerminalUtils.BOLD + "HEALTHY" + TerminalUtils.RESET);
+            TerminalUtils.printKeyValue("Latency", report.latencyMs() + "ms");
+            TerminalUtils.printKeyValue("Provider", report.provider());
+            TerminalUtils.printKeyValue("Endpoint", "Verified (200 OK)");
+        } else {
+            TerminalUtils.printError("Status: " + TerminalUtils.BOLD + "UNREACHABLE" + TerminalUtils.RESET);
+            TerminalUtils.printKeyValue("Reason", report.status());
+            TerminalUtils.printKeyValue("Provider", report.provider());
+            TerminalUtils.printWarn("Consider checking your API keys or network connection.");
+        }
     }
 }

@@ -227,4 +227,28 @@ public class LlmCallService {
 
     public record LlmCallResult(String content, long latencyMs, int inputTokens, int outputTokens,
                                 double costUsd, boolean simulated, String mode) {}
+
+    public record HealthReport(boolean reachable, long latencyMs, String status, String provider) {}
+
+    public HealthReport checkHealth(int userId, LlmModel model) {
+        Instant start = Instant.now();
+        try {
+            Provider provider = Provider.fromAny(model.getProvider()).orElse(Provider.CUSTOM);
+            Optional<String> keyOpt = apiKeyService.retrieveRawKey(userId, provider);
+            
+            if (keyOpt.isEmpty()) {
+                return new HealthReport(false, 0, "No API key configured", model.getProvider());
+            }
+
+            // Simple ping prompt
+            if (userId == -1) throw new Exception("Admin check requested"); // Special case for nexus health cmd
+            
+            executeCall(userId, model, "Ping");
+            long latency = Duration.between(start, Instant.now()).toMillis();
+            return new HealthReport(true, latency, "Healthy", model.getProvider());
+        } catch (Exception e) {
+            long latency = Duration.between(start, Instant.now()).toMillis();
+            return new HealthReport(false, latency, e.getMessage(), model.getProvider());
+        }
+    }
 }

@@ -13,6 +13,8 @@ import java.util.Scanner;
 import com.nexus.dao.LlmModelDao;
 import com.nexus.dao.OutcomeMemoryDao;
 import com.nexus.dao.SuitabilityDao;
+import com.nexus.service.ApiKeyService;
+import com.nexus.service.LlmCallService;
 import com.nexus.domain.AgentSession;
 import com.nexus.domain.LlmModel;
 import com.nexus.domain.ModelSuitability;
@@ -37,6 +39,7 @@ public class NexusCommandRunner {
     private final LlmModelDao modelDao;
     private final SuitabilityDao suitabilityDao;
     private final OutcomeMemoryDao outcomeDao;
+    private final LlmCallService llmCallService;
     private final Scanner scanner;
 
     public NexusCommandRunner() {
@@ -50,6 +53,7 @@ public class NexusCommandRunner {
         this.modelDao = new LlmModelDao();
         this.suitabilityDao = new SuitabilityDao();
         this.outcomeDao = new OutcomeMemoryDao();
+        this.llmCallService = new LlmCallService(new ApiKeyService());
         this.scanner = scanner;
     }
 
@@ -73,6 +77,10 @@ public class NexusCommandRunner {
                 }
                 case "finance" -> {
                     handleFinance(Arrays.copyOfRange(args, 1, args.length));
+                    yield true;
+                }
+                case "health" -> {
+                    handleHealth();
                     yield true;
                 }
                 case "help", "--help", "-h" -> {
@@ -347,6 +355,36 @@ public class NexusCommandRunner {
             return raw == null ? "" : new String(raw);
         }
         return readLine(prompt + " (visible): ");
+    }
+
+    private void handleHealth() {
+        TerminalUtils.printHeader("GLOBAL HEALTH DIAGNOSTIC");
+        List<com.nexus.domain.LlmModel> models = modelDao.findAll();
+        if (models.isEmpty()) {
+            TerminalUtils.printInfo("No models registered for health check.");
+            return;
+        }
+
+        String[] headers = {"Model", "Provider", "Status", "Latency", "Details"};
+        String[][] rows = new String[models.size()][5];
+
+        for (int i = 0; i < models.size(); i++) {
+            com.nexus.domain.LlmModel m = models.get(i);
+            System.out.print("\r  Probing [" + (i + 1) + "/" + models.size() + "] " + m.getName() + "...");
+            System.out.flush();
+
+            LlmCallService.HealthReport report = llmCallService.checkHealth(-1, m); // -1 triggers admin check skip
+            
+            rows[i] = new String[]{
+                m.getName(),
+                m.getProvider(),
+                report.reachable() ? TerminalUtils.GREEN + "HEALTHY" + TerminalUtils.RESET : TerminalUtils.RED + "ERR" + TerminalUtils.RESET,
+                report.reachable() ? report.latencyMs() + "ms" : "-",
+                report.reachable() ? "Verified 200 OK" : report.status()
+            };
+        }
+        System.out.print("\r" + " ".repeat(60) + "\r"); // Clear line
+        TerminalUtils.printTable(headers, rows);
     }
 
     private void printCommandHelp() {
