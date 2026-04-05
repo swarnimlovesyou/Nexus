@@ -12,9 +12,12 @@ public class DbConnectionManager {
 
     private DbConnectionManager() {
         try {
-            // Ensure driver is loaded
             Class.forName("org.sqlite.JDBC");
             connection = DriverManager.getConnection(DB_URL);
+            // Enable foreign keys
+            try (Statement fk = connection.createStatement()) {
+                fk.execute("PRAGMA foreign_keys = ON");
+            }
             initializeDatabase();
         } catch (ClassNotFoundException | SQLException e) {
             System.err.println("Database connection failed: " + e.getMessage());
@@ -28,56 +31,100 @@ public class DbConnectionManager {
         return instance;
     }
 
-    public Connection getConnection() {
-        return connection;
-    }
+    public Connection getConnection() { return connection; }
 
     private void initializeDatabase() {
-        String createUsersTable = "CREATE TABLE IF NOT EXISTS users ("
-                + "id INTEGER PRIMARY KEY AUTOINCREMENT,"
-                + "username TEXT UNIQUE NOT NULL,"
-                + "password_hash TEXT NOT NULL,"
-                + "role TEXT NOT NULL,"
-                + "created_at TEXT DEFAULT CURRENT_TIMESTAMP"
-                + ");";
-
-        String createLlmModelsTable = "CREATE TABLE IF NOT EXISTS llm_models ("
-                + "id INTEGER PRIMARY KEY AUTOINCREMENT,"
-                + "name TEXT NOT NULL,"
-                + "provider TEXT NOT NULL,"
-                + "cost_per_1k_tokens REAL NOT NULL,"
-                + "created_at TEXT DEFAULT CURRENT_TIMESTAMP"
-                + ");";
-
-        String createModelSuitabilityTable = "CREATE TABLE IF NOT EXISTS model_suitability ("
-                + "id INTEGER PRIMARY KEY AUTOINCREMENT,"
-                + "model_id INTEGER,"
-                + "task_type TEXT NOT NULL,"
-                + "base_score REAL NOT NULL,"
-                + "created_at TEXT DEFAULT CURRENT_TIMESTAMP,"
-                + "FOREIGN KEY(model_id) REFERENCES llm_models(id)"
-                + ");";
-
-        String createOutcomeMemoriesTable = "CREATE TABLE IF NOT EXISTS outcome_memories ("
-                + "id INTEGER PRIMARY KEY AUTOINCREMENT,"
-                + "user_id INTEGER,"
-                + "model_id INTEGER,"
-                + "task_type TEXT NOT NULL,"
-                + "cost REAL,"
-                + "latency_ms INTEGER,"
-                + "quality_score REAL,"
-                + "created_at TEXT DEFAULT CURRENT_TIMESTAMP,"
-                + "FOREIGN KEY(user_id) REFERENCES users(id),"
-                + "FOREIGN KEY(model_id) REFERENCES llm_models(id)"
-                + ");";
-
         try (Statement stmt = connection.createStatement()) {
-            stmt.execute(createUsersTable);
-            stmt.execute(createLlmModelsTable);
-            stmt.execute(createModelSuitabilityTable);
-            stmt.execute(createOutcomeMemoriesTable);
+            // ── Users ───────────────────────────────────────────────────────
+            stmt.execute("""
+                CREATE TABLE IF NOT EXISTS users (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    username TEXT UNIQUE NOT NULL,
+                    password_hash TEXT NOT NULL,
+                    role TEXT NOT NULL,
+                    created_at TEXT DEFAULT CURRENT_TIMESTAMP
+                )""");
+
+            // ── LLM Models ──────────────────────────────────────────────────
+            stmt.execute("""
+                CREATE TABLE IF NOT EXISTS llm_models (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    name TEXT NOT NULL,
+                    provider TEXT NOT NULL,
+                    cost_per_1k_tokens REAL NOT NULL,
+                    created_at TEXT DEFAULT CURRENT_TIMESTAMP
+                )""");
+
+            // ── Model Suitability ───────────────────────────────────────────
+            stmt.execute("""
+                CREATE TABLE IF NOT EXISTS model_suitability (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    model_id INTEGER,
+                    task_type TEXT NOT NULL,
+                    base_score REAL NOT NULL,
+                    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY(model_id) REFERENCES llm_models(id)
+                )""");
+
+            // ── Outcome Memories ────────────────────────────────────────────
+            stmt.execute("""
+                CREATE TABLE IF NOT EXISTS outcome_memories (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER,
+                    model_id INTEGER,
+                    task_type TEXT NOT NULL,
+                    cost REAL,
+                    latency_ms INTEGER,
+                    quality_score REAL,
+                    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY(user_id) REFERENCES users(id),
+                    FOREIGN KEY(model_id) REFERENCES llm_models(id)
+                )""");
+
+            // ── API Keys ────────────────────────────────────────────────────
+            stmt.execute("""
+                CREATE TABLE IF NOT EXISTS api_keys (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER NOT NULL,
+                    provider TEXT NOT NULL,
+                    alias TEXT NOT NULL,
+                    masked_key TEXT NOT NULL,
+                    encoded_key TEXT NOT NULL,
+                    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY(user_id) REFERENCES users(id)
+                )""");
+
+            // ── Contextd Memories ───────────────────────────────────────────
+            stmt.execute("""
+                CREATE TABLE IF NOT EXISTS memories (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER NOT NULL,
+                    agent_id TEXT DEFAULT 'default',
+                    content TEXT NOT NULL,
+                    tags TEXT,
+                    type TEXT NOT NULL,
+                    confidence REAL DEFAULT 1.0,
+                    access_count INTEGER DEFAULT 0,
+                    last_accessed_at TEXT,
+                    expires_at TEXT,
+                    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY(user_id) REFERENCES users(id)
+                )""");
+
+            // ── Audit Log ───────────────────────────────────────────────────
+            stmt.execute("""
+                CREATE TABLE IF NOT EXISTS audit_log (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER,
+                    action TEXT NOT NULL,
+                    details TEXT,
+                    outcome TEXT DEFAULT 'SUCCESS',
+                    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY(user_id) REFERENCES users(id)
+                )""");
+
         } catch (SQLException e) {
-            System.err.println("Failed to initialize database tables: " + e.getMessage());
+            System.err.println("Failed to initialize DB: " + e.getMessage());
         }
     }
 }

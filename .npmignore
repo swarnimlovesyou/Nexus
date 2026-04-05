@@ -1,0 +1,9 @@
+# Exclude development-only directories from npm package
+site/
+site/node_modules/
+.git/
+.gitignore
+*.db
+nexus.db
+plan.txt
+target/classes/
