@@ -67,6 +67,18 @@ public class MemoryDao implements GenericDao<Memory> {
         } catch (SQLException e) { System.err.println(e.getMessage()); }
     }
 
+    public boolean deleteByIdAndUserId(int id, int userId) {
+        String sql = "DELETE FROM memories WHERE id=? AND user_id=?";
+        try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
+            pstmt.setInt(1, id);
+            pstmt.setInt(2, userId);
+            return pstmt.executeUpdate() > 0;
+        } catch (SQLException e) {
+            System.err.println(e.getMessage());
+            return false;
+        }
+    }
+
     @Override
     public List<Memory> findAll() {
         List<Memory> list = new ArrayList<>();

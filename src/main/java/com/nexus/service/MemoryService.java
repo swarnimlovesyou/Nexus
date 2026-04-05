@@ -178,12 +178,27 @@ public class MemoryService {
 
     /** Hard delete a memory by ID. */
     public void forget(int userId, int memoryId) {
-        memoryDao.read(memoryId).ifPresent(m -> {
-            memoryDao.delete(memoryId);
+        Memory m = memoryDao.read(memoryId)
+            .orElseThrow(() -> new ValidationException("Memory not found."));
+
+        if (m.getUserId() != userId) {
             auditLogDao.create(new AuditLog(null, userId, "MEMORY_FORGET",
-                "id=" + memoryId + " content=" + m.getContent().substring(0, Math.min(40, m.getContent().length())),
-                "SUCCESS", null));
-        });
+                "Attempted delete of memoryId=" + memoryId + " ownedBy=" + m.getUserId(),
+                "FAILURE", null));
+            throw new ValidationException("Cannot delete a memory that belongs to another user.");
+        }
+
+        boolean deleted = memoryDao.deleteByIdAndUserId(memoryId, userId);
+        if (!deleted) {
+            auditLogDao.create(new AuditLog(null, userId, "MEMORY_FORGET",
+                "Delete failed for memoryId=" + memoryId + " ownedBy=" + userId,
+                "FAILURE", null));
+            throw new ValidationException("Failed to delete memory.");
+        }
+
+        auditLogDao.create(new AuditLog(null, userId, "MEMORY_FORGET",
+            "id=" + memoryId + " content=" + m.getContent().substring(0, Math.min(40, m.getContent().length())),
+            "SUCCESS", null));
     }
 
     // ═══════════════════════════════════════════════════════════════════════
