@@ -7,6 +7,7 @@ import com.nexus.domain.Memory;
 import com.nexus.domain.MemoryType;
 import com.nexus.exception.ValidationException;
 
+import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -17,10 +18,20 @@ import java.util.stream.Collectors;
 public class MemoryService {
     private final MemoryDao memoryDao;
     private final AuditLogDao auditLogDao;
+    private final Clock clock;
 
     public MemoryService() {
-        this.memoryDao = new MemoryDao();
-        this.auditLogDao = new AuditLogDao();
+        this(Clock.systemUTC());
+    }
+
+    public MemoryService(Clock clock) {
+        this(new MemoryDao(), new AuditLogDao(), clock);
+    }
+
+    MemoryService(MemoryDao memoryDao, AuditLogDao auditLogDao, Clock clock) {
+        this.memoryDao = memoryDao;
+        this.auditLogDao = auditLogDao;
+        this.clock = clock;
     }
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -69,7 +80,7 @@ public class MemoryService {
 
         // Use the smaller of ttlOverrideDays and type's default (prevents unlimited TTL abuse)
         int effectiveTtl = Math.max(1, ttlOverrideDays);
-        LocalDateTime expiresAt = LocalDateTime.now().plusDays(effectiveTtl);
+        LocalDateTime expiresAt = LocalDateTime.now(clock).plusDays(effectiveTtl);
 
         Memory mem = new Memory();
         mem.setUserId(userId);
@@ -98,7 +109,7 @@ public class MemoryService {
     public List<Memory> recall(int userId, String query) {
         List<Memory> matches = memoryDao.searchContent(userId, query); // ArrayList
 
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now(clock);
         // Score map: memoryId → hybrid score  (demonstrates HashMap usage)
         Map<Integer, Double> scoreMap = new HashMap<>();
         for (Memory m : matches) {
@@ -211,7 +222,7 @@ public class MemoryService {
      */
     public int runDecayPass(int userId) {
         List<Memory> all = memoryDao.findByUserId(userId); // ArrayList
-        LocalDateTime threshold = LocalDateTime.now().minusDays(7);
+        LocalDateTime threshold = LocalDateTime.now(clock).minusDays(7);
         int count = 0;
         for (Memory m : all) {
             LocalDateTime lastAccess = m.getLastAccessedAt() != null ? m.getLastAccessedAt() : m.getCreatedAt();

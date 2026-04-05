@@ -11,9 +11,11 @@ import java.util.Optional;
 
 public class MemoryDao implements GenericDao<Memory> {
     private final Connection connection;
+    private final DbTimeCodec timeCodec;
 
     public MemoryDao() {
         this.connection = DbConnectionManager.getInstance().getConnection();
+        this.timeCodec = new DbTimeCodec();
     }
 
     @Override
@@ -26,7 +28,7 @@ public class MemoryDao implements GenericDao<Memory> {
             pstmt.setString(4, mem.getTags());
             pstmt.setString(5, mem.getType().name());
             pstmt.setDouble(6, mem.getConfidence());
-            pstmt.setString(7, mem.getExpiresAt() != null ? mem.getExpiresAt().toString() : null);
+            timeCodec.setDateTime(pstmt, 7, mem.getExpiresAt());
             pstmt.executeUpdate();
             try (ResultSet rs = pstmt.getGeneratedKeys()) {
                 if (rs.next()) mem.setId(rs.getInt(1));
@@ -53,7 +55,7 @@ public class MemoryDao implements GenericDao<Memory> {
             pstmt.setString(2, mem.getTags());
             pstmt.setString(3, mem.getType().name());
             pstmt.setDouble(4, mem.getConfidence());
-            pstmt.setString(5, mem.getExpiresAt() != null ? mem.getExpiresAt().toString() : null);
+            timeCodec.setDateTime(pstmt, 5, mem.getExpiresAt());
             pstmt.setInt(6, mem.getId());
             pstmt.executeUpdate();
         } catch (SQLException e) { System.err.println(e.getMessage()); }
@@ -122,17 +124,19 @@ public class MemoryDao implements GenericDao<Memory> {
 
     public void updateConfidenceAndAccess(int id, double newConf) {
         try (PreparedStatement pstmt = connection.prepareStatement(
-                "UPDATE memories SET confidence=?, access_count=access_count+1, last_accessed_at=CURRENT_TIMESTAMP WHERE id=?")) {
+                "UPDATE memories SET confidence=?, access_count=access_count+1, last_accessed_at=? WHERE id=?")) {
             pstmt.setDouble(1, newConf);
-            pstmt.setInt(2, id);
+            pstmt.setLong(2, timeCodec.nowEpochSeconds());
+            pstmt.setInt(3, id);
             pstmt.executeUpdate();
         } catch (SQLException e) { System.err.println(e.getMessage()); }
     }
 
     public int pruneStale(int userId) {
         try (PreparedStatement pstmt = connection.prepareStatement(
-                "DELETE FROM memories WHERE user_id=? AND (confidence < 0.10 OR (expires_at IS NOT NULL AND expires_at < CURRENT_TIMESTAMP))")) {
+                "DELETE FROM memories WHERE user_id=? AND (confidence < 0.10 OR (expires_at IS NOT NULL AND expires_at < ?))")) {
             pstmt.setInt(1, userId);
+            pstmt.setLong(2, timeCodec.nowEpochSeconds());
             return pstmt.executeUpdate();
         } catch (SQLException e) { System.err.println(e.getMessage()); return 0; }
     }
@@ -142,10 +146,9 @@ public class MemoryDao implements GenericDao<Memory> {
     }
 
     private Memory map(ResultSet rs) throws SQLException {
-        LocalDateTime createdAt = null, lastAccessed = null, expiresAt = null;
-        try { createdAt = rs.getTimestamp("created_at").toLocalDateTime(); } catch (Exception ignored) {}
-        try { if (rs.getString("last_accessed_at") != null) lastAccessed = rs.getTimestamp("last_accessed_at").toLocalDateTime(); } catch (Exception ignored) {}
-        try { if (rs.getString("expires_at") != null) expiresAt = LocalDateTime.parse(rs.getString("expires_at").replace(" ", "T").substring(0, 19)); } catch (Exception ignored) {}
+        LocalDateTime createdAt = timeCodec.readDateTime(rs, "created_at");
+        LocalDateTime lastAccessed = timeCodec.readDateTime(rs, "last_accessed_at");
+        LocalDateTime expiresAt = timeCodec.readDateTime(rs, "expires_at");
 
         return new Memory(
             rs.getInt("id"),

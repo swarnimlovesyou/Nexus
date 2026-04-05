@@ -15,9 +15,11 @@ import com.nexus.domain.TaskType;
 
 public class OutcomeMemoryDao implements GenericDao<OutcomeMemory> {
     private final Connection connection;
+    private final DbTimeCodec timeCodec;
 
     public OutcomeMemoryDao() {
         this.connection = DbConnectionManager.getInstance().getConnection();
+        this.timeCodec = new DbTimeCodec();
     }
 
     @Override
@@ -193,8 +195,8 @@ public class OutcomeMemoryDao implements GenericDao<OutcomeMemory> {
         List<OutcomeMemory> list = new ArrayList<>();
         String sql = "SELECT * FROM outcome_memories WHERE created_at >= ? AND created_at <= ? ORDER BY created_at DESC";
         try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
-            pstmt.setString(1, from.toString());
-            pstmt.setString(2, to.toString());
+            pstmt.setLong(1, timeCodec.toEpochSeconds(from));
+            pstmt.setLong(2, timeCodec.toEpochSeconds(to));
             try (ResultSet rs = pstmt.executeQuery()) {
                 while (rs.next()) list.add(mapResultSetToMemory(rs));
             }
@@ -209,8 +211,8 @@ public class OutcomeMemoryDao implements GenericDao<OutcomeMemory> {
         String sql = "SELECT * FROM outcome_memories WHERE user_id = ? AND created_at >= ? AND created_at <= ? ORDER BY created_at DESC";
         try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
             pstmt.setInt(1, userId);
-            pstmt.setString(2, from.toString());
-            pstmt.setString(3, to.toString());
+            pstmt.setLong(2, timeCodec.toEpochSeconds(from));
+            pstmt.setLong(3, timeCodec.toEpochSeconds(to));
             try (ResultSet rs = pstmt.executeQuery()) {
                 while (rs.next()) list.add(mapResultSetToMemory(rs));
             }
@@ -221,10 +223,7 @@ public class OutcomeMemoryDao implements GenericDao<OutcomeMemory> {
     }
 
     private OutcomeMemory mapResultSetToMemory(ResultSet rs) throws SQLException {
-        LocalDateTime createdAt = null;
-        if (rs.getString("created_at") != null) {
-            createdAt = rs.getTimestamp("created_at").toLocalDateTime();
-        }
+        LocalDateTime createdAt = timeCodec.readDateTime(rs, "created_at");
         return new OutcomeMemory(
                 rs.getInt("id"),
                 rs.getInt("user_id"),

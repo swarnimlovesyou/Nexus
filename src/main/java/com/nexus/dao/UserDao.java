@@ -12,9 +12,11 @@ import java.util.Optional;
 
 public class UserDao implements GenericDao<User> {
     private final Connection connection;
+    private final DbTimeCodec timeCodec;
 
     public UserDao() {
         this.connection = DbConnectionManager.getInstance().getConnection();
+        this.timeCodec = new DbTimeCodec();
     }
 
     @Override
@@ -124,10 +126,7 @@ public class UserDao implements GenericDao<User> {
     }
 
     private User mapResultSetToUser(ResultSet rs) throws SQLException {
-        LocalDateTime createdAt = null;
-        if (rs.getString("created_at") != null) {
-            createdAt = rs.getTimestamp("created_at").toLocalDateTime();
-        }
+        LocalDateTime createdAt = timeCodec.readDateTime(rs, "created_at");
         String role = rs.getString("role");
         String username = rs.getString("username");
         String passwordHash = rs.getString("password_hash");

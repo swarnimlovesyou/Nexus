@@ -10,9 +10,11 @@ import java.util.Optional;
 
 public class AuditLogDao implements GenericDao<AuditLog> {
     private final Connection connection;
+    private final DbTimeCodec timeCodec;
 
     public AuditLogDao() {
         this.connection = DbConnectionManager.getInstance().getConnection();
+        this.timeCodec = new DbTimeCodec();
     }
 
     @Override
@@ -56,8 +58,7 @@ public class AuditLogDao implements GenericDao<AuditLog> {
     }
 
     private AuditLog map(ResultSet rs) throws SQLException {
-        LocalDateTime createdAt = null;
-        try { createdAt = rs.getTimestamp("created_at").toLocalDateTime(); } catch (Exception ignored) {}
+        LocalDateTime createdAt = timeCodec.readDateTime(rs, "created_at");
         int userId = rs.getInt("user_id");
         return new AuditLog(
             rs.getInt("id"),

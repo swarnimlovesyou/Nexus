@@ -10,9 +10,11 @@ import java.util.Optional;
 
 public class LlmModelDao implements GenericDao<LlmModel> {
     private final Connection connection;
+    private final DbTimeCodec timeCodec;
 
     public LlmModelDao() {
         this.connection = DbConnectionManager.getInstance().getConnection();
+        this.timeCodec = new DbTimeCodec();
     }
 
     @Override
@@ -107,10 +109,7 @@ public class LlmModelDao implements GenericDao<LlmModel> {
     }
 
     private LlmModel mapResultSetToModel(ResultSet rs) throws SQLException {
-        LocalDateTime createdAt = null;
-        if (rs.getString("created_at") != null) {
-            createdAt = rs.getTimestamp("created_at").toLocalDateTime();
-        }
+        LocalDateTime createdAt = timeCodec.readDateTime(rs, "created_at");
         return new LlmModel(
                 rs.getInt("id"),
                 rs.getString("name"),

@@ -1,5 +1,6 @@
 package com.nexus.service;
 
+import java.time.Clock;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -25,12 +26,23 @@ public class SessionService {
     private final LlmModelDao modelDao;
     private final OutcomeMemoryDao outcomeDao;
     private final AuditLogDao auditLogDao;
+    private final Clock clock;
 
     public SessionService() {
-        this.sessionDao = new SessionDao();
-        this.modelDao = new LlmModelDao();
-        this.outcomeDao = new OutcomeMemoryDao();
-        this.auditLogDao = new AuditLogDao();
+        this(Clock.systemUTC());
+    }
+
+    public SessionService(Clock clock) {
+        this(new SessionDao(), new LlmModelDao(), new OutcomeMemoryDao(), new AuditLogDao(), clock);
+    }
+
+    SessionService(SessionDao sessionDao, LlmModelDao modelDao, OutcomeMemoryDao outcomeDao,
+                   AuditLogDao auditLogDao, Clock clock) {
+        this.sessionDao = sessionDao;
+        this.modelDao = modelDao;
+        this.outcomeDao = outcomeDao;
+        this.auditLogDao = auditLogDao;
+        this.clock = clock;
     }
 
     public AgentSession startSession(int userId, TaskType taskType, int modelId, String notes) {
@@ -84,7 +96,7 @@ public class SessionService {
 
         int totalTokens = inputTokens + outputTokens;
         double totalCost = (totalTokens / 1000.0) * model.getCostPer1kTokens();
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now(clock);
 
         session.setInputTokens(inputTokens);
         session.setOutputTokens(outputTokens);

@@ -11,9 +11,11 @@ import java.util.Optional;
 
 public class SuitabilityDao implements GenericDao<ModelSuitability> {
     private final Connection connection;
+    private final DbTimeCodec timeCodec;
 
     public SuitabilityDao() {
         this.connection = DbConnectionManager.getInstance().getConnection();
+        this.timeCodec = new DbTimeCodec();
     }
 
     @Override
@@ -108,10 +110,7 @@ public class SuitabilityDao implements GenericDao<ModelSuitability> {
     }
 
     private ModelSuitability mapResultSetToSuitability(ResultSet rs) throws SQLException {
-        LocalDateTime createdAt = null;
-        if (rs.getString("created_at") != null) {
-            createdAt = rs.getTimestamp("created_at").toLocalDateTime();
-        }
+        LocalDateTime createdAt = timeCodec.readDateTime(rs, "created_at");
         return new ModelSuitability(
                 rs.getInt("id"),
                 rs.getInt("model_id"),

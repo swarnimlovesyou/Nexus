@@ -11,9 +11,11 @@ import java.util.Optional;
 
 public class ApiKeyDao implements GenericDao<ApiKey> {
     private final Connection connection;
+    private final DbTimeCodec timeCodec;
 
     public ApiKeyDao() {
         this.connection = DbConnectionManager.getInstance().getConnection();
+        this.timeCodec = new DbTimeCodec();
     }
 
     @Override
@@ -100,8 +102,7 @@ public class ApiKeyDao implements GenericDao<ApiKey> {
     }
 
     private ApiKey map(ResultSet rs) throws SQLException {
-        LocalDateTime createdAt = null;
-        try { createdAt = rs.getTimestamp("created_at").toLocalDateTime(); } catch (Exception ignored) {}
+        LocalDateTime createdAt = timeCodec.readDateTime(rs, "created_at");
         return new ApiKey(
             rs.getInt("id"),
             rs.getInt("user_id"),

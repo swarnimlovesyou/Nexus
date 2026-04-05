@@ -16,9 +16,11 @@ import com.nexus.domain.TaskType;
 
 public class SessionDao implements GenericDao<AgentSession> {
     private final Connection connection;
+    private final DbTimeCodec timeCodec;
 
     public SessionDao() {
         this.connection = DbConnectionManager.getInstance().getConnection();
+        this.timeCodec = new DbTimeCodec();
     }
 
     @Override
@@ -66,7 +68,7 @@ public class SessionDao implements GenericDao<AgentSession> {
             if (session.getTotalCost() == null) pstmt.setNull(7, Types.REAL); else pstmt.setDouble(7, session.getTotalCost());
             if (session.getQualityScore() == null) pstmt.setNull(8, Types.REAL); else pstmt.setDouble(8, session.getQualityScore());
             pstmt.setString(9, session.getNotes());
-            if (session.getEndedAt() == null) pstmt.setNull(10, Types.VARCHAR); else pstmt.setString(10, session.getEndedAt().toString());
+            timeCodec.setDateTime(pstmt, 10, session.getEndedAt());
             pstmt.setInt(11, session.getId());
             pstmt.executeUpdate();
         } catch (SQLException e) {
@@ -126,12 +128,8 @@ public class SessionDao implements GenericDao<AgentSession> {
     }
 
     private AgentSession map(ResultSet rs) throws SQLException {
-        LocalDateTime createdAt = rs.getTimestamp("created_at").toLocalDateTime();
-        LocalDateTime endedAt = null;
-        String ended = rs.getString("ended_at");
-        if (ended != null && !ended.isBlank()) {
-            endedAt = LocalDateTime.parse(ended.replace(" ", "T").substring(0, 19));
-        }
+        LocalDateTime createdAt = timeCodec.readDateTime(rs, "created_at");
+        LocalDateTime endedAt = timeCodec.readDateTime(rs, "ended_at");
 
         Integer inputTokens = rs.getObject("input_tokens") == null ? null : rs.getInt("input_tokens");
         Integer outputTokens = rs.getObject("output_tokens") == null ? null : rs.getInt("output_tokens");
