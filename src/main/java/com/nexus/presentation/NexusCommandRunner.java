@@ -8,6 +8,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Scanner;
 
 import com.nexus.dao.LlmModelDao;
 import com.nexus.dao.OutcomeMemoryDao;
@@ -36,14 +37,20 @@ public class NexusCommandRunner {
     private final LlmModelDao modelDao;
     private final SuitabilityDao suitabilityDao;
     private final OutcomeMemoryDao outcomeDao;
+    private final Scanner scanner;
 
     public NexusCommandRunner() {
+        this(new Scanner(System.in));
+    }
+
+    public NexusCommandRunner(Scanner scanner) {
         this.userService = new UserService();
         this.routingEngine = new RoutingEngine();
         this.sessionService = new SessionService();
         this.modelDao = new LlmModelDao();
         this.suitabilityDao = new SuitabilityDao();
         this.outcomeDao = new OutcomeMemoryDao();
+        this.scanner = scanner;
     }
 
     public static boolean tryRun(String[] args) {
@@ -330,7 +337,7 @@ public class NexusCommandRunner {
 
     private String readLine(String prompt) {
         System.out.print("  " + prompt);
-        return new java.util.Scanner(System.in).nextLine();
+        return scanner.nextLine();
     }
 
     private String readPassword(String prompt) {
