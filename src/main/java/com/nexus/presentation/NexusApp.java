@@ -12,6 +12,7 @@ import com.nexus.domain.ModelSuitability;
 import com.nexus.domain.Provider;
 import com.nexus.domain.TaskType;
 import com.nexus.domain.User;
+import com.nexus.exception.DaoException;
 import com.nexus.exception.NexusException;
 import com.nexus.util.TerminalUtils;
 
@@ -81,6 +82,8 @@ public class NexusApp {
                 else                            showMainMenu();
             } catch (NoSuchElementException e) {
                 return;
+            } catch (DaoException e) {
+                TerminalUtils.printError("Database operation failed. Please try again. No changes were saved.");
             } catch (NexusException e) {
                 TerminalUtils.printError(e.getMessage());
             } catch (Exception e) {
@@ -114,8 +117,14 @@ public class NexusApp {
             if (decayed > 0) {
                 TerminalUtils.printInfo(decayed + " memories naturally decayed in confidence since last login.");
             }
+        } catch (DaoException e) {
+            TerminalUtils.printError("Login is temporarily unavailable due to a database issue. Please try again.");
         } catch (NexusException e) {
-            ctx.auditLogDao().create(new AuditLog(null, null, "LOGIN_FAIL", "username=" + username, "FAILURE", null));
+            try {
+                ctx.auditLogDao().create(new AuditLog(null, null, "LOGIN_FAIL", "username=" + username, "FAILURE", null));
+            } catch (DaoException ignored) {
+                // Best-effort only: failed login feedback should not be blocked by audit write failures.
+            }
             throw e;
         }
     }
@@ -123,8 +132,12 @@ public class NexusApp {
     private void register() {
         System.out.print("  Username: "); String username = ctx.scanner().nextLine();
         String password = readPassword("  Password: ");
-        ctx.userService().registerUser(username, password, "USER");
-        TerminalUtils.printSuccess("Account created. Please login.");
+        try {
+            ctx.userService().registerUser(username, password, "USER");
+            TerminalUtils.printSuccess("Account created. Please login.");
+        } catch (DaoException e) {
+            TerminalUtils.printError("Could not create account right now. Please try again.");
+        }
     }
 
     private void showMainMenu() {
@@ -176,6 +189,8 @@ public class NexusApp {
                 ctx.userService().updateUser(ctx.userId(), null, np);
                 TerminalUtils.printSuccess("Password updated successfully.");
             }
+        } catch (DaoException e) {
+            TerminalUtils.printError("Could not update account settings right now. Database operation failed; no changes were saved.");
         } catch (NexusException e) {
             TerminalUtils.printError("Authentication failed: " + e.getMessage());
         }

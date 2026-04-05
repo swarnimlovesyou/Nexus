@@ -26,9 +26,9 @@ public class ApiKeyMenu {
         System.out.println();
         TerminalUtils.printPrompt(ctx.username());
         switch (ctx.scanner().nextLine().trim().toUpperCase()) {
-            case "1" -> addKey();
-            case "2" -> viewKeys();
-            case "3" -> deleteKey();
+            case "1" -> ctx.runWithDaoGuard("Could not store API key. Database operation failed; no changes were saved.", this::addKey);
+            case "2" -> ctx.runWithDaoGuard("Unable to load API keys right now. Please try again.", this::viewKeys);
+            case "3" -> ctx.runWithDaoGuard("Could not delete API key. Database operation failed; no changes were saved.", this::deleteKey);
         }
     }
 

@@ -26,6 +26,10 @@ public class AuditMenu {
         String choice = ctx.scanner().nextLine().trim().toUpperCase();
         if (choice.equals("B")) return;
 
+        ctx.runWithDaoGuard("Unable to load audit logs right now. Please try again.", () -> renderAuditSelection(choice));
+    }
+
+    private void renderAuditSelection(String choice) {
         List<AuditLog> fullLog = "ADMIN".equals(ctx.loggedInUser().getRole())
             ? ctx.auditLogDao().findAll()
             : ctx.auditLogDao().findByUserId(ctx.userId());

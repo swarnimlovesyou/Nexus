@@ -7,6 +7,8 @@ import com.nexus.domain.ModelSuitability;
 import com.nexus.domain.Provider;
 import com.nexus.domain.TaskType;
 import com.nexus.domain.User;
+import com.nexus.exception.DaoException;
+import com.nexus.exception.NexusException;
 import com.nexus.util.SecurityUtils;
 import com.nexus.util.TerminalUtils;
 
@@ -50,13 +52,13 @@ public class AdminMenu {
             if ("B".equals(choice)) break;
             
             switch (choice) {
-                case "1" -> listUsers();
-                case "2" -> deleteUser();
-                case "3" -> updateUser(); // Phase 1.1
-                case "4" -> registerModel();
-                case "5" -> decommissionModel();
-                case "6" -> mapSuitability(true); // Phase 1.3
-                case "7" -> mapSuitability(false); // Phase 1.3
+                case "1" -> ctx.runWithDaoGuard("Unable to load users right now. Please try again.", this::listUsers);
+                case "2" -> ctx.runWithDaoGuard("Could not delete user. Database operation failed; no changes were saved.", this::deleteUser);
+                case "3" -> ctx.runWithDaoGuard("Could not update user. Database operation failed; no changes were saved.", this::updateUser); // Phase 1.1
+                case "4" -> ctx.runWithDaoGuard("Could not register model. Database operation failed; no changes were saved.", this::registerModel);
+                case "5" -> ctx.runWithDaoGuard("Could not decommission model. Database operation failed; no changes were saved.", this::decommissionModel);
+                case "6" -> ctx.runWithDaoGuard("Could not add suitability score. Database operation failed; no changes were saved.", () -> mapSuitability(true)); // Phase 1.3
+                case "7" -> ctx.runWithDaoGuard("Could not edit suitability score. Database operation failed; no changes were saved.", () -> mapSuitability(false)); // Phase 1.3
             }
         }
     }
@@ -111,8 +113,10 @@ public class AdminMenu {
             try {
                 ctx.userService().updateUser(id, nu, np);
                 TerminalUtils.printSuccess("User updated successfully.");
-            } catch (Exception e) {
-                TerminalUtils.printError("Failed to update user: " + e.getMessage());
+            } catch (DaoException e) {
+                throw e;
+            } catch (NexusException e) {
+                TerminalUtils.printError(e.getMessage());
             }
         } else {
             TerminalUtils.printInfo("No changes made.");

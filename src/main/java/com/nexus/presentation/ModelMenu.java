@@ -24,9 +24,9 @@ public class ModelMenu {
         System.out.println();
         TerminalUtils.printPrompt(ctx.username());
         switch (ctx.scanner().nextLine().trim().toUpperCase()) {
-            case "1" -> listAllModels();
-            case "2" -> filterByProvider();
-            case "3" -> suitabilityMatrix();
+            case "1" -> ctx.runWithDaoGuard("Unable to load models right now. Please try again.", this::listAllModels);
+            case "2" -> ctx.runWithDaoGuard("Unable to filter models by provider right now. Please try again.", this::filterByProvider);
+            case "3" -> ctx.runWithDaoGuard("Unable to load suitability matrix right now. Please try again.", this::suitabilityMatrix);
         }
     }
 

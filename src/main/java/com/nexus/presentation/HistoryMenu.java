@@ -30,41 +30,53 @@ public class HistoryMenu {
         String choice = ctx.scanner().nextLine().trim().toUpperCase();
         if (choice.equals("B")) return;
 
-        List<OutcomeMemory> history;
         switch (choice) {
-            case "2" -> {
-                TaskType task = ctx.pickTask();
-                history = ctx.outcomeDao().findByUserAndTaskType(ctx.userId(), task);
-                displayHistory(history);
-            }
-            case "3" -> {
-                System.out.print("  Model ID: ");
-                int mid = ctx.safeInt(ctx.scanner().nextLine());
-                if (mid <= 0) { TerminalUtils.printError("Invalid model ID."); return; }
-                history = ctx.outcomeDao().findByUserAndModelId(ctx.userId(), mid);
-                displayHistory(history);
-            }
-            case "4" -> {
-                System.out.print("  From date (YYYY-MM-DD): ");
-                String fromStr = ctx.scanner().nextLine().trim();
-                System.out.print("  To date   (YYYY-MM-DD): ");
-                String toStr   = ctx.scanner().nextLine().trim();
-                try {
-                    java.time.LocalDateTime from = java.time.LocalDate.parse(fromStr).atStartOfDay();
-                    java.time.LocalDateTime to   = java.time.LocalDate.parse(toStr).atTime(23, 59, 59);
-                    history = ctx.outcomeDao().findByUserAndDateRange(ctx.userId(), from, to);
-                    TerminalUtils.printInfo("Records from " + fromStr + " to " + toStr);
-                    displayHistory(history);
-                } catch (Exception e) {
-                    TerminalUtils.printError("Invalid date format. Use YYYY-MM-DD (e.g. 2026-04-01).");
-                }
-            }
-            case "5" -> updateQuality();
-            case "6" -> deleteRecord();
-            default -> {
-                history = ctx.outcomeDao().findByUserId(ctx.userId());
-                displayHistory(history);
-            }
+            case "2" -> ctx.runWithDaoGuard("Unable to filter history by task right now. Please try again.", this::filterByTask);
+            case "3" -> ctx.runWithDaoGuard("Unable to filter history by model right now. Please try again.", this::filterByModel);
+            case "4" -> ctx.runWithDaoGuard("Unable to search history by date right now. Please try again.", this::searchByDateRange);
+            case "5" -> ctx.runWithDaoGuard("Could not update execution quality. Database operation failed; no changes were saved.", this::updateQuality);
+            case "6" -> ctx.runWithDaoGuard("Could not delete execution record. Database operation failed; no changes were saved.", this::deleteRecord);
+            default -> ctx.runWithDaoGuard("Unable to load execution history right now. Please try again.", this::listAllHistory);
+        }
+    }
+
+    private void listAllHistory() {
+        List<OutcomeMemory> history = ctx.outcomeDao().findByUserId(ctx.userId());
+        displayHistory(history);
+    }
+
+    private void filterByTask() {
+        TaskType task = ctx.pickTask();
+        List<OutcomeMemory> history = ctx.outcomeDao().findByUserAndTaskType(ctx.userId(), task);
+        displayHistory(history);
+    }
+
+    private void filterByModel() {
+        System.out.print("  Model ID: ");
+        int mid = ctx.safeInt(ctx.scanner().nextLine());
+        if (mid <= 0) {
+            TerminalUtils.printError("Invalid model ID.");
+            return;
+        }
+
+        List<OutcomeMemory> history = ctx.outcomeDao().findByUserAndModelId(ctx.userId(), mid);
+        displayHistory(history);
+    }
+
+    private void searchByDateRange() {
+        System.out.print("  From date (YYYY-MM-DD): ");
+        String fromStr = ctx.scanner().nextLine().trim();
+        System.out.print("  To date   (YYYY-MM-DD): ");
+        String toStr = ctx.scanner().nextLine().trim();
+
+        try {
+            java.time.LocalDateTime from = java.time.LocalDate.parse(fromStr).atStartOfDay();
+            java.time.LocalDateTime to = java.time.LocalDate.parse(toStr).atTime(23, 59, 59);
+            List<OutcomeMemory> history = ctx.outcomeDao().findByUserAndDateRange(ctx.userId(), from, to);
+            TerminalUtils.printInfo("Records from " + fromStr + " to " + toStr);
+            displayHistory(history);
+        } catch (Exception e) {
+            TerminalUtils.printError("Invalid date format. Use YYYY-MM-DD (e.g. 2026-04-01).");
         }
     }
 
