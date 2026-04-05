@@ -44,6 +44,25 @@ CREATE TABLE IF NOT EXISTS outcome_memories (
     FOREIGN KEY(model_id) REFERENCES llm_models(id)
 );
 
+-- ── Agent Sessions (new) ─────────────────────────────────────────────────────
+-- Captures end-to-end coding sessions so outcomes are logged as coherent units.
+CREATE TABLE IF NOT EXISTS agent_sessions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    task_type TEXT NOT NULL,
+    model_id INTEGER NOT NULL,
+    status TEXT NOT NULL DEFAULT 'ACTIVE', -- ACTIVE | CLOSED
+    input_tokens INTEGER,
+    output_tokens INTEGER,
+    total_cost REAL,
+    quality_score REAL,
+    notes TEXT,
+    ended_at TEXT,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY(user_id) REFERENCES users(id),
+    FOREIGN KEY(model_id) REFERENCES llm_models(id)
+);
+
 -- ── API Key Vault ─────────────────────────────────────────────────────────────
 -- Keys are XOR + Base64 encoded. Not plaintext.
 CREATE TABLE IF NOT EXISTS api_keys (

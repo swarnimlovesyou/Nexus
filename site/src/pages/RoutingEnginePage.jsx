@@ -61,16 +61,16 @@ export function RoutingEnginePage() {
           lang="python" 
           code={`# How Nexus determines the 'winner'
 def calculate_verity_score(model):
-    s = model.suitability * 0.40 # IQ weight
-    q = model.historical_quality * 0.30 # Reliability weight
-    l = (1 / model.latency) * 0.20 # Speed weight
-    c = (1 / model.cost) * 0.10 # Price weight
+    s = model.suitability * 0.35 # prior capability
+    q = model.historical_quality * 0.30 # your recorded outcomes
+    c = model.cost_efficiency * 0.20 # cheaper is better
+    l = model.latency_score * 0.15 # faster is better
     
-    return s + q + l + c # Final Composite Score`} 
+    return s + q + c + l # Final Composite Score`} 
         />
 
         <Callout type="info">
-          <strong>Proactive Load Balancing:</strong> If multiple models have identical scores, Nexus will load-balance your requests locally to avoid rate-limiting from a single provider.
+          <strong>Actionability filter:</strong> If you have API keys configured, models without a matching provider key are deprioritized so recommendations stay executable.
         </Callout>
 
         <div style={{ marginTop: '40px', padding: '24px', background: 'var(--bg-surface)', border: '1px solid var(--border)', borderRadius: '8px' }}>

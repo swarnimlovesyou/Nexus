@@ -5,6 +5,7 @@ import com.nexus.domain.AdminUser;
 import com.nexus.domain.RegularUser;
 import com.nexus.domain.User;
 import com.nexus.exception.AuthenticationException;
+import com.nexus.exception.ResourceNotFoundException;
 import com.nexus.exception.ValidationException;
 import com.nexus.util.SecurityUtils;
 
@@ -62,5 +63,27 @@ public class UserService {
     
     public void deleteUser(Integer id) {
         userDao.delete(id);
+    }
+
+    public User updateUser(Integer id, String newUsername, String newPassword) {
+        Optional<User> opt = userDao.read(id);
+        if (opt.isEmpty()) throw new ResourceNotFoundException("User not found");
+        
+        User user = opt.get();
+        if (newUsername != null && !newUsername.trim().isEmpty()) {
+            // Check for duplicate
+            Optional<User> existing = userDao.findByUsername(newUsername);
+            if (existing.isPresent() && !existing.get().getId().equals(id)) {
+                throw new ValidationException("Username already exists");
+            }
+            user.setUsername(newUsername.trim());
+        }
+        
+        if (newPassword != null && !newPassword.trim().isEmpty()) {
+            user.setPasswordHash(SecurityUtils.hashPassword(newPassword.trim()));
+        }
+        
+        userDao.update(user);
+        return user;
     }
 }

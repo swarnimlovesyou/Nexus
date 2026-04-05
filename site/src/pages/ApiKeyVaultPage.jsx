@@ -17,18 +17,18 @@ export function ApiKeyVaultPage() {
         <div className="badge-premium">SECURITY ARCHITECTURE</div>
         <h1 className="page-title">Zero-Trust API Key Vault</h1>
         <p className="page-description">
-          Security isn't baked in; it's the foundation. Nexus stores all secrets behind hardware-level isolation where possible, obfuscated with rotating local secrets.
+          Nexus stores provider keys locally and masks them in UI. Keys are XOR-obfuscated in SQLite for convenience and local workflow safety.
         </p>
 
         {/* ── Security Architecture ────────────────── */}
         <section className="doc-section">
            <div className="section-header-inline">
               <ShieldCheck size={20} color="var(--accent)" />
-              <h2>Localized Encryption Matrix</h2>
+              <h2>Local Key Storage Model</h2>
            </div>
            <p>
-             Most AI tools store keys in plaintext <code>.env</code> files. Nexus moves beyond this by providing a <strong>Local-First Vaulting</strong> mechanism 
-             that utilizes XOR-encoded obfuscation. Your API keys, prompts, and memory never leave your silicon.
+             Nexus avoids scattering provider keys across shells and project files by storing them centrally in SQLite.
+             Keys are masked in UI and XOR-obfuscated at rest. This is practical local key management, not a replacement for enterprise KMS.
            </p>
 
            <div className="algorithm-card">
@@ -39,23 +39,23 @@ export function ApiKeyVaultPage() {
               <div className="alg-grid">
                  <div className="alg-item">
                    <span className="label">Encryption Type</span>
-                   <span className="value">XOR + Per-Session Salt</span>
-                   <div className="bar"><div className="fill" style={{ width: '95%' }}></div></div>
+                   <span className="value">XOR + Base64 obfuscation</span>
+                   <div className="bar"><div className="fill" style={{ width: '55%' }}></div></div>
                  </div>
                  <div className="alg-item">
-                   <span className="label">Key Rotation</span>
-                   <span className="value">90-Day Lifecycle</span>
-                   <div className="bar"><div className="fill" style={{ width: '70%' }}></div></div>
+                   <span className="label">Display</span>
+                   <span className="value">Masked key view (e.g. sk-...)</span>
+                   <div className="bar"><div className="fill" style={{ width: '80%' }}></div></div>
                  </div>
                  <div className="alg-item">
                    <span className="label">Cloud Sync</span>
-                   <span className="value">DISABLED (0% Leak)</span>
+                   <span className="value">Not implemented</span>
                    <div className="bar"><div className="fill" style={{ width: '100%', background: 'var(--green)' }}></div></div>
                  </div>
                  <div className="alg-item">
-                   <span className="label">Hardware Isolation</span>
-                   <span className="value">TPM / Secure Enclave</span>
-                   <div className="bar"><div className="fill" style={{ width: '60%' }}></div></div>
+                   <span className="label">Routing Integration</span>
+                   <span className="value">Provider-key aware recommendations</span>
+                   <div className="bar"><div className="fill" style={{ width: '85%' }}></div></div>
                  </div>
               </div>
            </div>
@@ -65,26 +65,22 @@ export function ApiKeyVaultPage() {
         <section className="doc-section">
            <div className="section-header-inline">
               <Key size={20} color="var(--accent)" />
-              <h2>The In-Memory Decryption Loop</h2>
+              <h2>Encode/Decode Flow</h2>
            </div>
            <p>
-             Decryption only occurs in-memory during the active request lifecycle. Keys are scrubbed immediately after the LLM handoff, 
-             ensuring they are never persisted in plaintext, even in temporary heap buffers.
+             When executing a live provider call, Nexus decodes the selected provider key in memory for request authorization.
+             The persisted DB value remains obfuscated.
            </p>
            
            <CodeBlock 
              lang="java" 
              code={`// Local Zero-Trust Decryption Factory
-public String getProviderSecret(String providerId) {
-    SecretEntity secret = vault.fetchEncrypted(providerId);
-    
-    // Obfuscate in-memory with local machine-specific salt
-    byte[] rawBytes = secret.getBlob();
-    for (int i = 0; i < rawBytes.length; i++) {
-        rawBytes[i] ^= machineSecret[i % machineSecret.length];
-    }
-    
-    return SecurePruner.scrubAndReturn(new String(rawBytes));
+      public String xorDecode(String encodedKey) {
+        byte[] bytes = Base64.getDecoder().decode(encodedKey);
+        for (int i = 0; i < bytes.length; i++) {
+          bytes[i] ^= XOR_KEY;
+        }
+        return new String(bytes);
 }`}
            />
         </section>
@@ -95,18 +91,18 @@ public String getProviderSecret(String providerId) {
           <div className="pillars-grid">
              <div className="pillar-card">
                <EyeOff size={18} fill="rgba(232,116,92,0.1)" />
-               <h4>Zero Tracking</h4>
-               <p>Nexus does not track your provider IDs or key usage metrics. All billing is inferred from local traces.</p>
+               <h4>Centralized Local Vault</h4>
+               <p>Add each provider key once and reuse it across routing/live-call features in the CLI.</p>
              </div>
              <div className="pillar-card">
                <RefreshCw size={18} fill="rgba(232,116,92,0.1)" />
-               <h4>Rotating Secrets</h4>
-               <p>The internal vault secret rotates every 90 days, re-encrypting your entire key set automatically.</p>
+               <h4>Ownership Checks</h4>
+               <p>Delete operations enforce user ownership so one user cannot remove another user's key.</p>
              </div>
              <div className="pillar-card">
                <Server size={18} fill="rgba(232,116,92,0.1)" />
-               <h4>Isolated Sandbox</h4>
-               <p>Every provider is instantiated in its own isolated environment, preventing cross-key contamination.</p>
+               <h4>Actionable Routing</h4>
+               <p>Recommendations can be filtered by key availability so selected models are actually callable.</p>
              </div>
           </div>
         </section>
@@ -116,10 +112,10 @@ public String getProviderSecret(String providerId) {
           <h2>Vault Hygiene</h2>
           <div className="best-practices-grid">
             <Callout type="info">
-              <strong>Local Backup:</strong> Export your encrypted vault blob periodically. Without your machine-linked secret, this blob is useless to third parties.
+              <strong>Practical note:</strong> XOR obfuscation is lightweight. For high-security environments, integrate a dedicated secret manager.
             </Callout>
             <Callout type="warning">
-              <strong>Key Exposure:</strong> Avoid using <code>.env</code> files for LLM keys once you've migrated to the Nexus Vault.
+              <strong>Operational hygiene:</strong> Prefer vault-managed keys over scattered per-project secrets to reduce key confusion.
             </Callout>
           </div>
         </section>

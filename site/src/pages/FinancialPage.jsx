@@ -27,8 +27,7 @@ export function FinancialPage() {
               <h2>Token Economy & Real-Time Intel</h2>
            </div>
            <p>
-             Every token has a price. Nexus provides granular visibility into your AI expenditure, adjudicating model pricing in <strong>Indian Rupees (₹)</strong> to ensure 
-             localized financial clarity for your agentive operations.
+             Every token has a price. Nexus provides granular visibility into your AI expenditure using the same USD values stored in execution outcomes.
            </p>
 
            <div className="algorithm-card">
@@ -39,17 +38,17 @@ export function FinancialPage() {
               <div className="alg-grid">
                  <div className="alg-item">
                    <span className="label">Total Expenditure</span>
-                   <span className="value">₹12,402.00</span>
+                   <span className="value">$154.22</span>
                    <div className="bar"><div className="fill" style={{ width: '65%' }}></div></div>
                  </div>
                  <div className="alg-item">
                    <span className="label">Optimal Savings</span>
-                   <span className="value">₹4,281.50</span>
+                   <span className="value">$43.81</span>
                    <div className="bar"><div className="fill" style={{ width: '85%', background: 'var(--green)' }}></div></div>
                  </div>
                  <div className="alg-item">
                    <span className="label">Avg. Call Cost</span>
-                   <span className="value">₹0.42</span>
+                   <span className="value">$0.019</span>
                    <div className="bar"><div className="fill" style={{ width: '25%' }}></div></div>
                  </div>
                  <div className="alg-item">
@@ -78,10 +77,10 @@ export function FinancialPage() {
                 </thead>
                 <tbody>
                   {[
-                    { provider: 'OpenAI GPT-4o', calls: '2,401', cost: '₹0.42', savings: '₹10,290' },
-                    { provider: 'Anthropic Claude-3.5', calls: '1,102', cost: '₹0.25', savings: '₹3,528' },
-                    { provider: 'Groq Llama-3 (vLLM)', calls: '8,421', cost: '₹0.008', savings: '₹26,104' },
-                    { provider: 'Mistral-Large', calls: '402', cost: '₹0.67', savings: '₹998' },
+                    { provider: 'OpenAI GPT-4o', calls: '241', cost: '$0.0050', savings: '$19.44' },
+                    { provider: 'Anthropic Claude-3.5', calls: '110', cost: '$0.0030', savings: '$11.28' },
+                    { provider: 'Groq Llama-3-70b', calls: '421', cost: '$0.0008', savings: '$25.60' },
+                    { provider: 'Gemini 1.5 Pro', calls: '89', cost: '$0.00125', savings: '$4.33' },
                   ].map((row, i) => (
                     <tr key={i} style={{ borderBottom: '1px solid var(--border)' }}>
                       <td style={{ padding: '12px', color: 'var(--text)', fontWeight: '850', fontSize: '14px' }}>{row.provider}</td>
@@ -109,9 +108,9 @@ export function FinancialPage() {
              lang="java" 
              code={`// Predictive cost epoch analysis
 double daily_velocity = currentEpoch.getTokens() / daysActive;
-double estimated_eom_bill = daily_velocity * 30 * avgTokenRateINR;
+double estimated_eom_bill = daily_velocity * 30 * avgTokenRateUsd;
 
-if (estimated_eom_bill > userBudgetINR) {
+if (estimated_eom_bill > userBudgetUsd) {
     nexus.throttle(ThrottlingStrategy.CONSERVATIVE_SAVE);
     System.out.println("ALERT: Predictive budget overflow detected.");
 }`}
@@ -135,7 +134,7 @@ if (estimated_eom_bill > userBudgetINR) {
              <div className="pillar-card">
                <LayoutGrid size={18} fill="rgba(232,116,92,0.1)" />
                <h4>Granular Billing</h4>
-               <p>Analyze economy metrics per-project, per-user, or per-agent shard with zero cloud leak.</p>
+               <p>Analyze economy metrics per-user, per-model, and per-task type using local persisted outcomes.</p>
              </div>
           </div>
         </section>
@@ -145,10 +144,10 @@ if (estimated_eom_bill > userBudgetINR) {
           <h2>Financial Constraints</h2>
           <div className="best-practices-grid">
             <Callout type="info">
-              <strong>Currency Setup:</strong> All metrics are normalized to <code>INR (₹)</code> using a daily updated exchange rate buffer.
+              <strong>Currency Setup:</strong> Runtime analytics use USD values persisted from outcome records.
             </Callout>
             <Callout type="warning">
-              <strong>Hard Limits:</strong> We recommend setting your <code>monthly_cap_inr</code> to at least 15% above your expected usage to prevent service interruption.
+              <strong>Hard Limits:</strong> Set a practical monthly cap in your workflow and run the dashboard weekly to keep spend intentional.
             </Callout>
           </div>
         </section>

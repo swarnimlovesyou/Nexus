@@ -4,3 +4,10 @@ target/
 nexus.db
 .idea/
 *.iml
+
+# Local planning / scratch docs (not for GitHub)
+plan.txt
+vision.txt
+NEW_PLAN.md
+assignment.txt
+test_inputs.txt

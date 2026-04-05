@@ -47,7 +47,7 @@ export function OverviewPage() {
           '<span className="t-prompt">nexus@local $</span> <span className="t-cmd">status --all</span>',
           '<span style="color: var(--accent)">Nexus Engine Adjudicating suitability matrix...</span>',
           '<span style="color: var(--green)">● Nexus Core Online (v1.2.4)</span>',
-          '<span style="color: var(--text-muted)">[System] Contextd Memory Vault: 4,021 shards active</span>',
+          '<span style="color: var(--text-muted)">[System] Contextd Memory Vault: typed memory store online</span>',
           '<span style="color: var(--accent); font-weight: 850">★ ROUTING VERDICT: Claude-3.5-Sonnet [Score: 0.982]</span>',
           '<span style="color: var(--text-muted)">[Metadata] Latency: 1.2s. Cost Epoch: ₹0.42.</span>'
         ]} />
@@ -72,13 +72,13 @@ export function OverviewPage() {
           <div className="alg-grid">
              <div className="alg-item">
                <Target size={14} />
-               <span className="label">Accuracy</span>
-               <span className="value">40%</span>
-               <div className="bar"><div className="fill" style={{ width: '40%' }}></div></div>
+               <span className="label">Suitability</span>
+               <span className="value">35%</span>
+               <div className="bar"><div className="fill" style={{ width: '35%' }}></div></div>
              </div>
              <div className="alg-item">
-               <Activity size={14} />
-               <span className="label">Latency</span>
+               <ShieldCheck size={14} />
+               <span className="label">Quality</span>
                <span className="value">30%</span>
                <div className="bar"><div className="fill" style={{ width: '30%' }}></div></div>
              </div>
@@ -89,10 +89,10 @@ export function OverviewPage() {
                <div className="bar"><div className="fill" style={{ width: '20%' }}></div></div>
              </div>
              <div className="alg-item">
-               <ShieldCheck size={14} />
-               <span className="label">Reliability</span>
-               <span className="value">10%</span>
-               <div className="bar"><div className="fill" style={{ width: '10%' }}></div></div>
+               <Activity size={14} />
+               <span className="label">Latency</span>
+               <span className="value">15%</span>
+               <div className="bar"><div className="fill" style={{ width: '15%' }}></div></div>
              </div>
           </div>
         </div>
@@ -132,8 +132,8 @@ export function OverviewPage() {
            <h2>Contextd: The Memory Vault</h2>
         </div>
         <p>
-          A local-first SQLite persistence layer that stores vector-like results without the overhead. 
-          Features <strong>auto-decay</strong> logic for stale context shards, ensuring your agents operate on the most relevant data.
+          A local-first SQLite persistence layer for typed operational memories.
+          Features <strong>auto-decay</strong> and pruning to keep context relevant over time.
         </p>
       </motion.div>
 
@@ -153,8 +153,8 @@ export function OverviewPage() {
            </div>
            <div className="pillar-card">
              <Clock size={18} />
-             <h4>Zero Latency Cache</h4>
-             <p>Repeated tasks are intercepted and served from local cache, saving both execution time and tokens.</p>
+             <h4>Session Context</h4>
+             <p>Track full coding sessions and close them into outcomes so routing quality learns from coherent session data.</p>
            </div>
         </div>
       </motion.div>
@@ -169,7 +169,7 @@ export function OverviewPage() {
            </Link>
            <Link to="/memory" className="deep-dive-link">
               <span>Memory Layer &rarr;</span>
-              <p>Understanding Contextd sharding.</p>
+              <p>Understanding typed memory lifecycle.</p>
            </Link>
            <Link to="/api-vault" className="deep-dive-link">
               <span>API Vault &rarr;</span>

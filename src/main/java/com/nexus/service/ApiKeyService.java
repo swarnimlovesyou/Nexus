@@ -59,10 +59,17 @@ public class ApiKeyService {
     }
 
     public void deleteKey(int userId, int keyId) {
-        apiKeyDao.read(keyId).ifPresent(k ->
+        ApiKey key = apiKeyDao.read(keyId)
+            .orElseThrow(() -> new ValidationException("API key not found."));
+
+        if (key.getUserId() != userId) {
             auditLogDao.create(new AuditLog(null, userId, "API_KEY_DELETE",
-                "Provider=" + k.getProvider().getDisplayName() + " alias=" + k.getAlias(), "SUCCESS", null))
-        );
+                "Attempted delete of keyId=" + keyId + " ownedBy=" + key.getUserId(), "FAILURE", null));
+            throw new ValidationException("Access denied: this API key belongs to another user.");
+        }
+
+        auditLogDao.create(new AuditLog(null, userId, "API_KEY_DELETE",
+            "Provider=" + key.getProvider().getDisplayName() + " alias=" + key.getAlias(), "SUCCESS", null));
         apiKeyDao.delete(keyId);
     }
 

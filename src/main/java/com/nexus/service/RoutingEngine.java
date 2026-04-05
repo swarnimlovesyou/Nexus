@@ -56,7 +56,7 @@ public class RoutingEngine {
         }
 
         // Build set of providers user has keys for (null userId = no filter)
-        Set<String> accessibleProviders = getAccessibleProviders(userId);
+        Set<Provider> accessibleProviders = getAccessibleProviders(userId);
 
         List<OutcomeMemory> history = outcomeMemoryDao.findByTaskType(taskType);
         Map<Integer, List<OutcomeMemory>> histByModel = new HashMap<>();
@@ -81,8 +81,9 @@ public class RoutingEngine {
 
             if (model.getCostPer1kTokens() > maxCostPer1k) continue;
 
-            // Skip if user has keys configured but not for this provider
-            if (!accessibleProviders.isEmpty() && !accessibleProviders.contains(model.getProvider().toLowerCase())) {
+            Optional<Provider> modelProvider = Provider.fromAny(model.getProvider());
+            // Skip if user has keys configured but not for this provider.
+            if (!accessibleProviders.isEmpty() && (modelProvider.isEmpty() || !accessibleProviders.contains(modelProvider.get()))) {
                 continue;
             }
 
@@ -95,17 +96,38 @@ public class RoutingEngine {
             }
         }
 
-        // If filtering by provider left no results, fall back to all models
+        // If filtering by provider left no results, fall back to all models (no key filter)
         if (bestModel == null && !accessibleProviders.isEmpty()) {
             return selectOptimalModelForUser(taskType, maxCostPer1k, null);
         }
 
-        if (bestModel != null) {
-            auditLogDao.create(new AuditLog(null, userId, "ROUTING_DECISION",
-                "task=" + taskType + " selected=" + bestModel.getName() + " score=" + String.format("%.3f", highestScore),
-                "SUCCESS", null));
+        // Capture final snapshot — bestModel is mutated in the loop, can't be used directly in lambdas
+        final LlmModel finalBest = bestModel;
+        final double   finalScore = highestScore;
+
+        if (finalBest != null) {
+            // Persist a rich RoutingDecision audit record with all 4 individual signal scores.
+            // This makes the audit log queryable and demonstrates the engine's full reasoning.
+            List<ModelSuitability> suits = suitabilityDao.findByTaskType(taskType);
+            double suitScore = suits.stream()
+                .filter(s -> s.getModelId().equals(finalBest.getId()))
+                .mapToDouble(ModelSuitability::getBaseScore).findFirst().orElse(0.0);
+            List<OutcomeMemory> bestHist = histByModel.getOrDefault(finalBest.getId(), new ArrayList<>());
+            double qualScore = bestHist.isEmpty() ? 0.5 : bestHist.stream().mapToDouble(OutcomeMemory::getQualityScore).average().orElse(0.5);
+            double latScore  = bestHist.isEmpty() ? 0.5 : 1.0 - (bestHist.stream().mapToDouble(OutcomeMemory::getLatencyMs).average().orElse(1500) / Math.max(1, maxLatency));
+            double costScore = maxCost == 0 ? 1.0 : 1.0 - (finalBest.getCostPer1kTokens() / maxCost);
+            boolean keyPresent = accessibleProviders.isEmpty()
+                || Provider.fromAny(finalBest.getProvider()).map(accessibleProviders::contains).orElse(false);
+
+            String richDetails = String.format(
+                "task=%s | model=%s | composite=%.3f | suit=%.2f | qual=%.2f | lat=%.2f | cost=%.2f | samples=%d | keyPresent=%b",
+                taskType, finalBest.getName(), finalScore,
+                suitScore, qualScore, latScore, costScore,
+                bestHist.size(), keyPresent
+            );
+            auditLogDao.create(new AuditLog(null, userId, "ROUTING_DECISION", richDetails, "SUCCESS", null));
         }
-        return bestModel;
+        return finalBest;
     }
 
     /**
@@ -121,7 +143,7 @@ public class RoutingEngine {
         Map<Integer, List<OutcomeMemory>> histByModel = new HashMap<>();
         for (OutcomeMemory m : history) histByModel.computeIfAbsent(m.getModelId(), k -> new ArrayList<>()).add(m);
 
-        Set<String> accessibleProviders = getAccessibleProviders(userId);
+        Set<Provider> accessibleProviders = getAccessibleProviders(userId);
 
         double maxLatency = history.stream().mapToDouble(OutcomeMemory::getLatencyMs).max().orElse(3000);
         double maxCost    = suitabilities.stream()
@@ -142,8 +164,9 @@ public class RoutingEngine {
             double costScore  = maxCost == 0 ? 1.0 : 1.0 - (model.getCostPer1kTokens() / maxCost);
             double composite  = computeComposite(ms, model, modelHist, maxLatency, maxCost);
 
+            Optional<Provider> modelProvider = Provider.fromAny(model.getProvider());
             // Mark whether user has a key for this provider
-            boolean hasKey = accessibleProviders.isEmpty() || accessibleProviders.contains(model.getProvider().toLowerCase());
+            boolean hasKey = accessibleProviders.isEmpty() || modelProvider.map(accessibleProviders::contains).orElse(false);
             breakdown.add(new ModelScoreBreakdown(model, suitScore, qualScore, latScore, costScore, composite, modelHist.size(), hasKey));
         }
 
@@ -187,12 +210,12 @@ public class RoutingEngine {
      * Returns lowercase provider names for which the user has stored API keys.
      * Returns empty set if userId is null (no filtering applied).
      */
-    private Set<String> getAccessibleProviders(Integer userId) {
+    private Set<Provider> getAccessibleProviders(Integer userId) {
         if (userId == null) return Collections.emptySet();
-        Set<String> providers = new HashSet<>();
+        Set<Provider> providers = new HashSet<>();
         for (Provider p : Provider.values()) {
             if (apiKeyService.hasKeyForProvider(userId, p)) {
-                providers.add(p.getDisplayName().toLowerCase());
+                providers.add(p);
             }
         }
         return providers;

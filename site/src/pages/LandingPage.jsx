@@ -7,26 +7,26 @@ const FEATURES = [
   { 
     id: 'privacy',
     title: "Local-First Privacy", 
-    desc: "Privacy isn't a feature; it's the foundation. Nexus utilizes XOR-encoded local vaults. Your API keys, prompts, and memory never leave your silicon. Decryption only occurs in-memory during the active request lifecycle.",
+    desc: "Nexus keeps runtime state local in SQLite. API keys are masked and XOR-obfuscated, and all routing/memory/audit data stays on your machine by default.",
     icon: <Shield size={24}/>,
     label: "XOR VAULT",
-    specs: { Encryption: 'XOR-256', Isolation: 'Process-Level', Storage: 'Memory-Mapped' }
+    specs: { KeyStorage: 'XOR + Base64', Database: 'SQLite', Scope: 'Local-first' }
   },
   { 
     id: 'routing',
     title: "Agentic Routing", 
-    desc: "Stop guessing which LLM to use. Our Composite Scoring Engine adjudicates providers using a weighted matrix of Accuracy (40%), Latency (30%), and Cost (30%). Deterministic routing for stochastic models.",
+    desc: "Stop guessing which LLM to use. Nexus scores models by suitability, historical quality, cost efficiency, and latency, then explains the ranking before you choose.",
     icon: <Workflow size={24}/>,
     label: "VERITY ENGINE",
-    specs: { Logic: 'Weighted Matrix', Efficiency: '98.5%', Providers: 'Multi-Core' }
+    specs: { Weights: '35/30/20/15', ExplainMode: 'Built-in', WhatIf: 'Budget tiers' }
   },
   { 
     id: 'memory',
     title: "Contextd Memory", 
-    desc: "Unlock infinite-context agents. Contextd is a sharded persistence layer that implements temporal decay logic, automatically pruning stale context shards to keep token costs low and precision high.",
+    desc: "Capture durable workflow knowledge as typed memories (FACT, PREFERENCE, EPISODE, SKILL). Decay and prune tools keep memory relevant over time.",
     icon: <Database size={24}/>,
-    label: "SHARDED SQLITE",
-    specs: { Database: 'SQLite/WAL', Decay: 'Temporal', Scaling: 'Infinite Context' }
+    label: "TYPED MEMORY",
+    specs: { Types: '5 memory classes', Decay: '-5% after 7d stale', Prune: 'Expired or <0.10 conf' }
   },
   { 
     id: 'finance',
@@ -39,18 +39,18 @@ const FEATURES = [
   { 
     id: 'vault',
     title: "Zero-Trust Vault", 
-    desc: "Security is baked in. All secrets are stored behind hardware-level isolation where possible, and obfuscated with rotating local secrets in the API Key Vault.",
+    desc: "The API Key Vault centralizes provider keys and integrates directly with routing so recommendations stay actionable for your available providers.",
     icon: <Lock size={24}/>,
     label: "HARDWARE SEC",
-    specs: { Protocol: 'Zero-Trust', Secrets: 'Rotating', Hardware: 'TPM Optimized' }
+    specs: { MaskedView: 'Enabled', OwnershipChecks: 'Enabled', ProviderAware: 'Enabled' }
   },
   { 
     id: 'latency',
     title: "Predictive Latency", 
-    desc: "Latency shouldn't be a random variable. We maintain a local latency telemetry database to predict response times and route around provider service degradation.",
+    desc: "Latency from recorded outcomes is fed back into routing scores, helping recommendations adapt to your recent execution behavior.",
     icon: <Zap size={24}/>,
     label: "TELEMETRY",
-    specs: { P99: '< 140ms', Correction: 'Auto-Route', Tracking: 'Per-Provider' }
+    specs: { Signal: 'Latency score', Source: 'Outcome history', Scope: 'Per task/model' }
   }
 ];
 
@@ -107,10 +107,10 @@ export function LandingPage() {
                <div className="dot dot-red"></div>
                <div className="dot dot-yellow"></div>
                <div className="dot dot-green"></div>
-               <span className="window-title">nexus --start --engine=verity</span>
+               <span className="window-title">nexus start</span>
              </div>
              <div className="window-content">
-               <div className="p-line"><span className="p-prompt">nexus@local $</span> Initializing Contextd sharded memory... [DONE]</div>
+               <div className="p-line"><span className="p-prompt">nexus@local $</span> Initializing Contextd typed memory store... [DONE]</div>
                <div className="p-line"><span className="p-prompt">nexus@local $</span> Evaluating suitability matrix for task "Build Landing Page"...</div>
                <div className="p-line t-verdict">★ VERDICT: Claude-3.5-Sonnet routed via Verity Optimization [Score: 0.985]</div>
                <div className="p-line">Latency: 1.2s | Cost: $0.002 | Quality Delta: +14%</div>
@@ -213,7 +213,7 @@ export function LandingPage() {
            </div>
            <div className="metric-box">
              <span className="m-val">∞</span>
-             <span className="m-lbl">Context Sharding</span>
+             <span className="m-lbl">Context Continuity</span>
            </div>
         </div>
       </section>
@@ -228,7 +228,7 @@ export function LandingPage() {
              { title: 'Input Capture', desc: 'Agent submits task. Nexus calculates fingerprint and context requirements.', icon: <SquareCode size={22}/> },
              { title: 'Adjudication', desc: 'Verity engine evaluates the provider matrix for optimal cost-to-quality ratio.', icon: <Workflow size={22}/> },
              { title: 'Execution', desc: 'Secure, encrypted request dispatched to the chosen LLM provider.', icon: <Terminal size={22}/> },
-             { title: 'Synthesis', desc: 'Result is captured, shard-persisted to Contextd, and returned to agent.', icon: <Database size={22}/> },
+             { title: 'Synthesis', desc: 'Result is captured, persisted to Contextd, and returned to the workflow.', icon: <Database size={22}/> },
            ].map((step, i) => (
              <div key={i} className="flow-step">
                <div className="step-icon-wrap">

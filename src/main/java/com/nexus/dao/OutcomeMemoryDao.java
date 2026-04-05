@@ -97,6 +97,22 @@ public class OutcomeMemoryDao implements GenericDao<OutcomeMemory> {
         return list;
     }
 
+    public List<OutcomeMemory> findByUserId(Integer userId) {
+        List<OutcomeMemory> list = new ArrayList<>();
+        String sql = "SELECT * FROM outcome_memories WHERE user_id = ? ORDER BY created_at DESC";
+        try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
+            pstmt.setInt(1, userId);
+            try (ResultSet rs = pstmt.executeQuery()) {
+                while (rs.next()) {
+                    list.add(mapResultSetToMemory(rs));
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Error fetching memories by user id: " + e.getMessage());
+        }
+        return list;
+    }
+
     public List<OutcomeMemory> findByTaskType(TaskType taskType) {
         List<OutcomeMemory> list = new ArrayList<>();
         String sql = "SELECT * FROM outcome_memories WHERE task_type = ?";
@@ -113,9 +129,26 @@ public class OutcomeMemoryDao implements GenericDao<OutcomeMemory> {
         return list;
     }
 
+    public List<OutcomeMemory> findByUserAndTaskType(Integer userId, TaskType taskType) {
+        List<OutcomeMemory> list = new ArrayList<>();
+        String sql = "SELECT * FROM outcome_memories WHERE user_id = ? AND task_type = ? ORDER BY created_at DESC";
+        try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
+            pstmt.setInt(1, userId);
+            pstmt.setString(2, taskType.name());
+            try (ResultSet rs = pstmt.executeQuery()) {
+                while (rs.next()) {
+                    list.add(mapResultSetToMemory(rs));
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Error fetching memories by user/task: " + e.getMessage());
+        }
+        return list;
+    }
+
     public List<OutcomeMemory> findByModelId(Integer modelId) {
         List<OutcomeMemory> list = new ArrayList<>();
-        String sql = "SELECT * FROM outcome_memories WHERE model_id = ?";
+        String sql = "SELECT * FROM outcome_memories WHERE model_id = ? ORDER BY created_at DESC";
         try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
             pstmt.setInt(1, modelId);
             try (ResultSet rs = pstmt.executeQuery()) {
@@ -125,6 +158,60 @@ public class OutcomeMemoryDao implements GenericDao<OutcomeMemory> {
             }
         } catch (SQLException e) {
             System.err.println("Error fetching memories by model id: " + e.getMessage());
+        }
+        return list;
+    }
+
+    public List<OutcomeMemory> findByUserAndModelId(Integer userId, Integer modelId) {
+        List<OutcomeMemory> list = new ArrayList<>();
+        String sql = "SELECT * FROM outcome_memories WHERE user_id = ? AND model_id = ? ORDER BY created_at DESC";
+        try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
+            pstmt.setInt(1, userId);
+            pstmt.setInt(2, modelId);
+            try (ResultSet rs = pstmt.executeQuery()) {
+                while (rs.next()) {
+                    list.add(mapResultSetToMemory(rs));
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Error fetching memories by user/model: " + e.getMessage());
+        }
+        return list;
+    }
+
+    /**
+     * Find execution records within a date window.
+     * Demonstrates ArrayList collection + date-range SQL filter.
+     * @param from  start of window (inclusive)
+     * @param to    end of window (inclusive)
+     */
+    public List<OutcomeMemory> findByDateRange(java.time.LocalDateTime from, java.time.LocalDateTime to) {
+        List<OutcomeMemory> list = new ArrayList<>();
+        String sql = "SELECT * FROM outcome_memories WHERE created_at >= ? AND created_at <= ? ORDER BY created_at DESC";
+        try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
+            pstmt.setString(1, from.toString());
+            pstmt.setString(2, to.toString());
+            try (ResultSet rs = pstmt.executeQuery()) {
+                while (rs.next()) list.add(mapResultSetToMemory(rs));
+            }
+        } catch (SQLException e) {
+            System.err.println("Error fetching by date range: " + e.getMessage());
+        }
+        return list;
+    }
+
+    public List<OutcomeMemory> findByUserAndDateRange(Integer userId, java.time.LocalDateTime from, java.time.LocalDateTime to) {
+        List<OutcomeMemory> list = new ArrayList<>();
+        String sql = "SELECT * FROM outcome_memories WHERE user_id = ? AND created_at >= ? AND created_at <= ? ORDER BY created_at DESC";
+        try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
+            pstmt.setInt(1, userId);
+            pstmt.setString(2, from.toString());
+            pstmt.setString(3, to.toString());
+            try (ResultSet rs = pstmt.executeQuery()) {
+                while (rs.next()) list.add(mapResultSetToMemory(rs));
+            }
+        } catch (SQLException e) {
+            System.err.println("Error fetching by user/date range: " + e.getMessage());
         }
         return list;
     }

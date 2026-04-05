@@ -41,13 +41,13 @@ export function QuickstartPage() {
             <div className="alg-grid">
                <div className="alg-item">
                  <Target size={14} />
-                 <span className="label">Accuracy</span>
-                 <span className="value">40%</span>
-                 <div className="bar"><div className="fill" style={{ width: '40%' }}></div></div>
+                 <span className="label">Suitability</span>
+                 <span className="value">35%</span>
+                 <div className="bar"><div className="fill" style={{ width: '35%' }}></div></div>
                </div>
                <div className="alg-item">
-                 <Activity size={14} />
-                 <span className="label">Latency</span>
+                 <ShieldCheck size={14} />
+                 <span className="label">Quality</span>
                  <span className="value">30%</span>
                  <div className="bar"><div className="fill" style={{ width: '30%' }}></div></div>
                </div>
@@ -58,10 +58,10 @@ export function QuickstartPage() {
                  <div className="bar"><div className="fill" style={{ width: '20%' }}></div></div>
                </div>
                <div className="alg-item">
-                 <ShieldCheck size={14} />
-                 <span className="label">Reliability</span>
-                 <span className="value">10%</span>
-                 <div className="bar"><div className="fill" style={{ width: '10%' }}></div></div>
+                 <Activity size={14} />
+                 <span className="label">Latency</span>
+                 <span className="value">15%</span>
+                 <div className="bar"><div className="fill" style={{ width: '15%' }}></div></div>
                </div>
             </div>
           </div>
@@ -77,7 +77,7 @@ export function QuickstartPage() {
            
            <div className="step-box">
              <h3>02. Local Registration</h3>
-             <p>Create your encrypted local profile (Option 2) to sandbox your <strong>Contextd</strong> memories.</p>
+             <p>Create your local account (Option 2) so memories, sessions, keys, and outcomes are associated with your user.</p>
            </div>
            
            <div className="step-box">
@@ -93,8 +93,8 @@ export function QuickstartPage() {
              <h2>Contextd: The Memory Vault</h2>
           </div>
           <p>
-            A local-first SQLite persistence layer that stores vector-like results without the overhead. 
-            Features <strong>auto-decay</strong> for stale context shards to maintain precision and minimize token waste.
+            A local-first SQLite memory layer for typed workflow knowledge.
+            Features <strong>auto-decay</strong> and prune operations to keep recall quality high.
           </p>
         </section>
 
@@ -114,8 +114,8 @@ export function QuickstartPage() {
              </div>
              <div className="pillar-card">
                <Clock size={18} />
-               <h4>Zero Latency Cache</h4>
-               <p>Repeated tasks are intercepted and served from local cache, saving both execution time and tokens.</p>
+               <h4>Session Context</h4>
+               <p>Use start/close session flows to track end-to-end coding runs and auto-log outcomes consistently.</p>
              </div>
           </div>
         </section>
@@ -151,7 +151,7 @@ export function QuickstartPage() {
                <strong>Prompt Engineering:</strong> Keep tasks concise. Nexus routes better when intent is clearly defined at the start of the prompt.
              </Callout>
              <Callout type="warning">
-               <strong>Key Management:</strong> Rotate your local vault secret every 90 days using the built-in CLI utility.
+               <strong>Key Management:</strong> Keys are XOR-obfuscated for local convenience; use dedicated secret management for high-security environments.
              </Callout>
           </div>
         </section>

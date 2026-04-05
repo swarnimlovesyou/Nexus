@@ -10,20 +10,20 @@ const item = { hidden: { opacity: 0, y: 15 }, show: { opacity: 1, y: 0 }};
 export function InstallPage() {
   const installOptions = [
     { 
-      label: 'NPM (Global)', 
-      code: '# Recommended for most users\nnpm install -g nexus-autopilot\n\n# Verify installation\nnexus --version' 
+      label: 'Maven Build', 
+      code: '# Build from repository root\nmvn clean package\n\n# Run jar\njava -jar target/nexus-autopilot-1.0-SNAPSHOT-jar-with-dependencies.jar' 
     },
     { 
-      label: 'Homebrew (macOS)', 
-      code: 'brew tap nexus-autopilot/nexus\nbrew install nexus\n\n# Start nexus\nnexus start' 
+      label: 'Windows Helper', 
+      code: '# Windows convenience wrapper\nnexus.bat start' 
     },
     { 
-      label: 'PowerShell (Win)', 
-      code: 'iwr https://nexus.ai/install.ps1 -useb | iex\n\n# Verify\nnexus start' 
+      label: 'Jar Direct Run', 
+      code: 'java -jar target/nexus-autopilot-1.0-SNAPSHOT-jar-with-dependencies.jar' 
     },
     { 
-      label: 'From Source', 
-      code: 'git clone https://github.com/swarnimlovesyou/Nexus.git\ncd Nexus\nmvn clean package\njava -jar target/nexus-1.0.jar start' 
+      label: 'NPM Local Link', 
+      code: '# Optional local CLI wrapper\nnpm install -g .\n\n# Then run\nnexus start' 
     }
   ];
 
@@ -60,17 +60,17 @@ export function InstallPage() {
             <div className="pillar-card">
               <Cpu size={18} color="var(--accent)" />
               <h4>Runtime Engine</h4>
-              <p>Java 17+ (LTS) and Node.js 18+ are required for core execution and CLI management.</p>
+              <p>Java 17+ is required. Node.js is optional and only needed if you want the npm CLI wrapper.</p>
             </div>
             <div className="pillar-card">
               <Database size={18} color="var(--accent)" />
               <h4>Local Storage</h4>
-              <p>Embedded SQLite engine. No external databases or cloud sync required for local state.</p>
+              <p>Embedded SQLite (`nexus.db`) is created automatically on first run. No external DB setup required.</p>
             </div>
             <div className="pillar-card">
               <ShieldCheck size={18} color="var(--accent)" />
-              <h4>Write Access</h4>
-              <p>Nexus requires elevated local permissions to initialize the <strong>XOR-encoded</strong> key vault.</p>
+              <h4>Terminal Access</h4>
+              <p>Use a terminal that supports ANSI output for the best CLI rendering experience.</p>
             </div>
           </div>
         </section>
@@ -81,8 +81,8 @@ export function InstallPage() {
               <Binary size={20} color="var(--accent)" />
               <h2>Verify Deployment</h2>
            </div>
-           <p>Post-installation, bridge the connection to your local core using the status flag.</p>
-           <CodeBlock code="nexus status --ping" lang="bash" />
+            <p>If the dashboard loads and prompts for login/register, installation is working.</p>
+            <CodeBlock code="nexus start" lang="bash" />
         </section>
 
         {/* ── Next Steps ────────────────────────────── */}

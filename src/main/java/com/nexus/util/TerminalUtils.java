@@ -48,9 +48,14 @@ public class TerminalUtils {
         System.out.println();
         System.out.println(BOLD + "COMMANDS" + RESET);
         System.out.printf("  %-12s  %s%n", AMBER + "start" + RESET, "Launch the interactive Nexus autopilot CLI");
+        System.out.printf("  %-12s  %s%n", AMBER + "session" + RESET, "Manage DB-backed coding sessions from command mode");
+        System.out.printf("  %-12s  %s%n", AMBER + "finance" + RESET, "Generate spend analysis reports from command mode");
         System.out.println();
         System.out.println(BOLD + "EXAMPLES" + RESET);
         System.out.println("  " + GRAY + "nexus start" + RESET);
+        System.out.println("  " + GRAY + "nexus session list --user admin" + RESET);
+        System.out.println("  " + GRAY + "nexus session start --user admin --task CODE_GENERATION" + RESET);
+        System.out.println("  " + GRAY + "nexus finance report --user admin --range 30d" + RESET);
         System.out.println();
         System.out.println(GRAY + "Docs: https://github.com/swarnimlovesyou/Nexus" + RESET);
         System.out.println();

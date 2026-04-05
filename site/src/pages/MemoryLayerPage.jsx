@@ -17,45 +17,45 @@ export function MemoryLayerPage() {
         <div className="badge-premium">PERSISTENCE LAYER</div>
         <h1 className="page-title">Contextd: The Memory Vault</h1>
         <p className="page-description">
-          A local-first SQLite sharding engine designed for high-density agentic memory without the overhead of cloud vector stores.
+          A local-first typed memory layer on SQLite for operational knowledge captured during AI-agent workflows.
         </p>
 
         {/* ── Architecture Overview ─────────────────── */}
         <section className="doc-section">
            <div className="section-header-inline">
               <Layers size={20} color="var(--accent)" />
-              <h2>Sharded Persistence Architecture</h2>
+              <h2>Typed Persistence Architecture</h2>
            </div>
            <p>
-             Contextd isn't just a database; it is a <strong>temporal sharding engine</strong>. It anchors stochastic LLM outputs into 
-             stateful, deterministic local memory shards. This allows your agents to maintain long-term context across multiple execution cycles without re-prompting.
+             Contextd stores explicit memory objects (`FACT`, `PREFERENCE`, `EPISODE`, `SKILL`, `CONTRADICTION`) in SQLite and exposes CRUD + recall
+             through service/DAO layers. It is designed for practical, queryable workflow memory, not opaque chat transcripts.
            </p>
 
            <div className="algorithm-card">
               <div className="alg-header">
                 <DbIcon size={14} />
-                <span>ACTIVE SHARD TELEMETRY</span>
+                <span>MEMORY LIFECYCLE RULES</span>
               </div>
               <div className="alg-grid">
                  <div className="alg-item">
-                   <span className="label">Total Shards</span>
-                   <span className="value">42,810</span>
-                   <div className="bar"><div className="fill" style={{ width: '85%' }}></div></div>
+                   <span className="label">Store Types</span>
+                   <span className="value">FACT/PREFERENCE/EPISODE/SKILL/CONTRADICTION</span>
+                   <div className="bar"><div className="fill" style={{ width: '100%' }}></div></div>
                  </div>
                  <div className="alg-item">
-                   <span className="label">Access Latency</span>
-                   <span className="value">1.4ms</span>
-                   <div className="bar"><div className="fill" style={{ width: '15%' }}></div></div>
+                   <span className="label">Recall Ranking</span>
+                   <span className="value">confidence*0.7 + recency*0.3</span>
+                   <div className="bar"><div className="fill" style={{ width: '70%' }}></div></div>
                  </div>
                  <div className="alg-item">
                    <span className="label">Decay Rate</span>
-                   <span className="value">0.05 / day</span>
-                   <div className="bar"><div className="fill" style={{ width: '40%' }}></div></div>
+                   <span className="value">-5% after 7 days stale</span>
+                   <div className="bar"><div className="fill" style={{ width: '55%' }}></div></div>
                  </div>
                  <div className="alg-item">
-                   <span className="label">Relevance Index</span>
-                   <span className="value">0.96 P99</span>
-                   <div className="bar"><div className="fill" style={{ width: '96%' }}></div></div>
+                   <span className="label">Prune Threshold</span>
+                   <span className="value">confidence &lt; 0.10 or expired TTL</span>
+                   <div className="bar"><div className="fill" style={{ width: '35%' }}></div></div>
                  </div>
               </div>
            </div>
@@ -68,21 +68,19 @@ export function MemoryLayerPage() {
               <h2>The Temporal Decay Algorithm</h2>
            </div>
            <p>
-             Not all memories are useful forever. Contextd implements a <strong>decay-based pruning logic</strong>. Every shard starts with a vitality score of 1.0. 
-             If a shard remains un-queried, its vitality score decays geometrically. Once it hits the <code>0.05</code> threshold, it is archived to local cold storage.
+             Not all memories stay relevant forever. The decay pass reduces confidence by 5% for entries that have not been accessed in 7+ days.
+             Pruning removes entries once confidence drops below <code>0.10</code> or TTL expires.
            </p>
            
            <CodeBlock 
              lang="python" 
              code={`# Contextd decay calculation logic
-def calculate_shard_vitality(last_access_ts, base_vitality=1.0):
-    delta_days = (now() - last_access_ts).days
-    decay_factor = 0.95 ** delta_days
-    current_vitality = base_vitality * decay_factor
-    
-    if current_vitality < 0.05:
-        trigger_cold_storage_archive()
-    return current_vitality`}
+      def run_decay(memory):
+        if days_since(memory.last_accessed_or_created) > 7:
+          memory.confidence = max(0.0, memory.confidence - 0.05)
+
+      def should_prune(memory):
+        return memory.confidence < 0.10 or memory.is_ttl_expired()`}
            />
         </section>
 
@@ -98,12 +96,12 @@ def calculate_shard_vitality(last_access_ts, base_vitality=1.0):
              <div className="pillar-card">
                <Zap size={18} fill="rgba(232,116,92,0.1)" />
                <h4>Sub-ms Recall</h4>
-               <p>SQLite sharding ensures memory recall is faster than any cloud vector database.</p>
+               <p>SQLite-backed recall avoids network round-trips and keeps retrieval local to your machine.</p>
              </div>
              <div className="pillar-card">
                <Activity size={18} fill="rgba(232,116,92,0.1)" />
                <h4>Predictive Injection</h4>
-               <p>Nexus only injects the top 5% most relevant shards, keeping token costs low.</p>
+               <p>Nexus ranks recall results by confidence and recency so you can inject the most relevant memories first.</p>
              </div>
           </div>
         </section>
@@ -113,10 +111,10 @@ def calculate_shard_vitality(last_access_ts, base_vitality=1.0):
           <h2>Memory Management</h2>
           <div className="best-practices-grid">
             <Callout type="info">
-              <strong>Storage Path:</strong> Memory is persisted in <code>~/.nexus/contextd.db</code>. This file is encrypted using your local vault secret.
+              <strong>Storage Path:</strong> Memory is persisted in local SQLite tables inside <code>nexus.db</code>.
             </Callout>
             <Callout type="warning">
-              <strong>Archive Hygiene:</strong> We recommend pruning your cold storage every quarter to reclaim disk space.
+              <strong>Operational Habit:</strong> Run decay/prune periodically, or at least review stale memories weekly to keep recall high-signal.
             </Callout>
           </div>
         </section>
