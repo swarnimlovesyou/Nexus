@@ -39,41 +39,39 @@ public class FinanceMenu {
             String input = ctx.scanner().nextLine().trim().toLowerCase();
             if ("b".equals(input)) return;
 
-            List<OutcomeMemory> history = ctx.outcomeDao().findByUserId(ctx.userId());
-            if (history.isEmpty()) {
-                TerminalUtils.printInfo("No execution history available for cost analysis.");
-                return;
-            }
-
-            String label;
-            List<OutcomeMemory> scoped;
             switch (input) {
-                case "1" -> {
-                    label = "LIFETIME";
-                    scoped = history;
-                }
-                case "2" -> {
-                    label = "LAST 7 DAYS";
-                    scoped = filterByRange(history, LocalDateTime.now().minusDays(7));
-                }
-                case "3" -> {
-                    label = "LAST 30 DAYS";
-                    scoped = filterByRange(history, LocalDateTime.now().minusDays(30));
-                }
-                default -> {
-                    TerminalUtils.printError("Unknown option.");
-                    continue;
-                }
+                case "1" -> ctx.runWithDaoGuard(
+                    "Unable to generate lifetime report right now. Please try again.",
+                    () -> showScopedReport("LIFETIME", null)
+                );
+                case "2" -> ctx.runWithDaoGuard(
+                    "Unable to generate 7-day report right now. Please try again.",
+                    () -> showScopedReport("LAST 7 DAYS", LocalDateTime.now().minusDays(7))
+                );
+                case "3" -> ctx.runWithDaoGuard(
+                    "Unable to generate 30-day report right now. Please try again.",
+                    () -> showScopedReport("LAST 30 DAYS", LocalDateTime.now().minusDays(30))
+                );
+                default -> TerminalUtils.printError("Unknown option.");
             }
-
-            if (scoped.isEmpty()) {
-                TerminalUtils.printInfo("No executions recorded for " + label + ".");
-                continue;
-            }
-
-            TerminalUtils.spinner("Compiling cross-model cost analytics...", 700);
-            renderReport(scoped, label, 0.70);
         }
+    }
+
+    private void showScopedReport(String label, LocalDateTime cutoff) {
+        List<OutcomeMemory> history = ctx.outcomeDao().findByUserId(ctx.userId());
+        if (history.isEmpty()) {
+            TerminalUtils.printInfo("No execution history available for cost analysis.");
+            return;
+        }
+
+        List<OutcomeMemory> scoped = cutoff == null ? history : filterByRange(history, cutoff);
+        if (scoped.isEmpty()) {
+            TerminalUtils.printInfo("No executions recorded for " + label + ".");
+            return;
+        }
+
+        TerminalUtils.spinner("Compiling cross-model cost analytics...", 700);
+        renderReport(scoped, label, 0.70);
     }
 
     private List<OutcomeMemory> filterByRange(List<OutcomeMemory> history, LocalDateTime cutoff) {

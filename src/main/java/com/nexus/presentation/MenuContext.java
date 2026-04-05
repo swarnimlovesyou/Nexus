@@ -8,6 +8,7 @@ import com.nexus.dao.OutcomeMemoryDao;
 import com.nexus.dao.SuitabilityDao;
 import com.nexus.domain.TaskType;
 import com.nexus.domain.User;
+import com.nexus.exception.DaoException;
 import com.nexus.exception.NexusException;
 import com.nexus.service.ApiKeyService;
 import com.nexus.service.LlmCallService;
@@ -93,5 +94,16 @@ public class MenuContext {
         int idx = safeInt(scanner.nextLine()) - 1;
         if (idx < 0 || idx >= tasks.length) throw new NexusException("Invalid task selection (1-" + tasks.length + ").");
         return tasks[idx];
+    }
+
+    /**
+     * Wraps menu actions to convert low-level DAO failures into clear user-facing guidance.
+     */
+    public void runWithDaoGuard(String failureMessage, Runnable action) {
+        try {
+            action.run();
+        } catch (DaoException e) {
+            TerminalUtils.printError(failureMessage);
+        }
     }
 }

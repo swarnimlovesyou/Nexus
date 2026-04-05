@@ -13,12 +13,15 @@ import java.util.Optional;
 
 import com.nexus.domain.AgentSession;
 import com.nexus.domain.TaskType;
+import com.nexus.exception.DaoException;
 
 public class SessionDao implements GenericDao<AgentSession> {
     private final Connection connection;
+    private final DbTimeCodec timeCodec;
 
     public SessionDao() {
         this.connection = DbConnectionManager.getInstance().getConnection();
+        this.timeCodec = new DbTimeCodec();
     }
 
     @Override
@@ -35,7 +38,7 @@ public class SessionDao implements GenericDao<AgentSession> {
                 if (rs.next()) session.setId(rs.getInt(1));
             }
         } catch (SQLException e) {
-            System.err.println("Error creating session: " + e.getMessage());
+            throw new DaoException("Failed to create session.", e);
         }
     }
 
@@ -48,7 +51,7 @@ public class SessionDao implements GenericDao<AgentSession> {
                 if (rs.next()) return Optional.of(map(rs));
             }
         } catch (SQLException e) {
-            System.err.println("Error reading session: " + e.getMessage());
+            throw new DaoException("Failed to read session by id.", e);
         }
         return Optional.empty();
     }
@@ -66,11 +69,11 @@ public class SessionDao implements GenericDao<AgentSession> {
             if (session.getTotalCost() == null) pstmt.setNull(7, Types.REAL); else pstmt.setDouble(7, session.getTotalCost());
             if (session.getQualityScore() == null) pstmt.setNull(8, Types.REAL); else pstmt.setDouble(8, session.getQualityScore());
             pstmt.setString(9, session.getNotes());
-            if (session.getEndedAt() == null) pstmt.setNull(10, Types.VARCHAR); else pstmt.setString(10, session.getEndedAt().toString());
+            timeCodec.setDateTime(pstmt, 10, session.getEndedAt());
             pstmt.setInt(11, session.getId());
             pstmt.executeUpdate();
         } catch (SQLException e) {
-            System.err.println("Error updating session: " + e.getMessage());
+            throw new DaoException("Failed to update session.", e);
         }
     }
 
@@ -81,7 +84,7 @@ public class SessionDao implements GenericDao<AgentSession> {
             pstmt.setInt(1, id);
             pstmt.executeUpdate();
         } catch (SQLException e) {
-            System.err.println("Error deleting session: " + e.getMessage());
+            throw new DaoException("Failed to delete session.", e);
         }
     }
 
@@ -92,7 +95,7 @@ public class SessionDao implements GenericDao<AgentSession> {
         try (Statement stmt = connection.createStatement(); ResultSet rs = stmt.executeQuery(sql)) {
             while (rs.next()) list.add(map(rs));
         } catch (SQLException e) {
-            System.err.println("Error listing sessions: " + e.getMessage());
+            throw new DaoException("Failed to list sessions.", e);
         }
         return list;
     }
@@ -106,7 +109,7 @@ public class SessionDao implements GenericDao<AgentSession> {
                 while (rs.next()) list.add(map(rs));
             }
         } catch (SQLException e) {
-            System.err.println("Error listing user sessions: " + e.getMessage());
+            throw new DaoException("Failed to list user sessions.", e);
         }
         return list;
     }
@@ -120,18 +123,14 @@ public class SessionDao implements GenericDao<AgentSession> {
                 while (rs.next()) list.add(map(rs));
             }
         } catch (SQLException e) {
-            System.err.println("Error listing active sessions: " + e.getMessage());
+            throw new DaoException("Failed to list active sessions.", e);
         }
         return list;
     }
 
     private AgentSession map(ResultSet rs) throws SQLException {
-        LocalDateTime createdAt = rs.getTimestamp("created_at").toLocalDateTime();
-        LocalDateTime endedAt = null;
-        String ended = rs.getString("ended_at");
-        if (ended != null && !ended.isBlank()) {
-            endedAt = LocalDateTime.parse(ended.replace(" ", "T").substring(0, 19));
-        }
+        LocalDateTime createdAt = timeCodec.readDateTime(rs, "created_at");
+        LocalDateTime endedAt = timeCodec.readDateTime(rs, "ended_at");
 
         Integer inputTokens = rs.getObject("input_tokens") == null ? null : rs.getInt("input_tokens");
         Integer outputTokens = rs.getObject("output_tokens") == null ? null : rs.getInt("output_tokens");

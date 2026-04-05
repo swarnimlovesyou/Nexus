@@ -18,6 +18,7 @@ import com.nexus.domain.ModelSuitability;
 import com.nexus.domain.OutcomeMemory;
 import com.nexus.domain.TaskType;
 import com.nexus.domain.User;
+import com.nexus.exception.DaoException;
 import com.nexus.service.RoutingEngine;
 import com.nexus.service.SessionService;
 import com.nexus.service.UserService;
@@ -73,6 +74,9 @@ public class NexusCommandRunner {
                 }
                 default -> false;
             };
+        } catch (DaoException e) {
+            TerminalUtils.printError("Command failed due to a database issue. Database operation failed; no changes were saved.");
+            return true;
         } catch (Exception e) {
             TerminalUtils.printError(e.getMessage());
             return true;

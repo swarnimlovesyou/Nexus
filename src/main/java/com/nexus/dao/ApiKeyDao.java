@@ -2,6 +2,7 @@ package com.nexus.dao;
 
 import com.nexus.domain.ApiKey;
 import com.nexus.domain.Provider;
+import com.nexus.exception.DaoException;
 
 import java.sql.*;
 import java.time.LocalDateTime;
@@ -11,9 +12,11 @@ import java.util.Optional;
 
 public class ApiKeyDao implements GenericDao<ApiKey> {
     private final Connection connection;
+    private final DbTimeCodec timeCodec;
 
     public ApiKeyDao() {
         this.connection = DbConnectionManager.getInstance().getConnection();
+        this.timeCodec = new DbTimeCodec();
     }
 
     @Override
@@ -30,7 +33,7 @@ public class ApiKeyDao implements GenericDao<ApiKey> {
                 if (rs.next()) key.setId(rs.getInt(1));
             }
         } catch (SQLException e) {
-            System.err.println("Error creating API key: " + e.getMessage());
+            throw new DaoException("Failed to create API key.", e);
         }
     }
 
@@ -42,7 +45,9 @@ public class ApiKeyDao implements GenericDao<ApiKey> {
             try (ResultSet rs = pstmt.executeQuery()) {
                 if (rs.next()) return Optional.of(map(rs));
             }
-        } catch (SQLException e) { System.err.println(e.getMessage()); }
+        } catch (SQLException e) {
+            throw new DaoException("Failed to read API key by id.", e);
+        }
         return Optional.empty();
     }
 
@@ -55,7 +60,9 @@ public class ApiKeyDao implements GenericDao<ApiKey> {
             pstmt.setString(3, key.getEncodedKey());
             pstmt.setInt(4, key.getId());
             pstmt.executeUpdate();
-        } catch (SQLException e) { System.err.println(e.getMessage()); }
+        } catch (SQLException e) {
+            throw new DaoException("Failed to update API key.", e);
+        }
     }
 
     @Override
@@ -63,7 +70,9 @@ public class ApiKeyDao implements GenericDao<ApiKey> {
         try (PreparedStatement pstmt = connection.prepareStatement("DELETE FROM api_keys WHERE id=?")) {
             pstmt.setInt(1, id);
             pstmt.executeUpdate();
-        } catch (SQLException e) { System.err.println(e.getMessage()); }
+        } catch (SQLException e) {
+            throw new DaoException("Failed to delete API key.", e);
+        }
     }
 
     @Override
@@ -72,7 +81,9 @@ public class ApiKeyDao implements GenericDao<ApiKey> {
         try (Statement stmt = connection.createStatement();
              ResultSet rs = stmt.executeQuery("SELECT * FROM api_keys")) {
             while (rs.next()) list.add(map(rs));
-        } catch (SQLException e) { System.err.println(e.getMessage()); }
+        } catch (SQLException e) {
+            throw new DaoException("Failed to fetch API keys.", e);
+        }
         return list;
     }
 
@@ -83,7 +94,9 @@ public class ApiKeyDao implements GenericDao<ApiKey> {
             try (ResultSet rs = pstmt.executeQuery()) {
                 while (rs.next()) list.add(map(rs));
             }
-        } catch (SQLException e) { System.err.println(e.getMessage()); }
+        } catch (SQLException e) {
+            throw new DaoException("Failed to fetch API keys by user.", e);
+        }
         return list;
     }
 
@@ -95,13 +108,14 @@ public class ApiKeyDao implements GenericDao<ApiKey> {
             try (ResultSet rs = pstmt.executeQuery()) {
                 if (rs.next()) return Optional.of(map(rs));
             }
-        } catch (SQLException e) { System.err.println(e.getMessage()); }
+        } catch (SQLException e) {
+            throw new DaoException("Failed to fetch API key by user and provider.", e);
+        }
         return Optional.empty();
     }
 
     private ApiKey map(ResultSet rs) throws SQLException {
-        LocalDateTime createdAt = null;
-        try { createdAt = rs.getTimestamp("created_at").toLocalDateTime(); } catch (Exception ignored) {}
+        LocalDateTime createdAt = timeCodec.readDateTime(rs, "created_at");
         return new ApiKey(
             rs.getInt("id"),
             rs.getInt("user_id"),

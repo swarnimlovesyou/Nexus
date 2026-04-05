@@ -3,6 +3,7 @@ package com.nexus.dao;
 import com.nexus.domain.AdminUser;
 import com.nexus.domain.RegularUser;
 import com.nexus.domain.User;
+import com.nexus.exception.DaoException;
 
 import java.sql.*;
 import java.time.LocalDateTime;
@@ -12,9 +13,11 @@ import java.util.Optional;
 
 public class UserDao implements GenericDao<User> {
     private final Connection connection;
+    private final DbTimeCodec timeCodec;
 
     public UserDao() {
         this.connection = DbConnectionManager.getInstance().getConnection();
+        this.timeCodec = new DbTimeCodec();
     }
 
     @Override
@@ -32,7 +35,7 @@ public class UserDao implements GenericDao<User> {
                 }
             }
         } catch (SQLException e) {
-            System.err.println("Error creating base user: " + e.getMessage());
+            throw new DaoException("Failed to create user.", e);
         }
     }
 
@@ -47,7 +50,7 @@ public class UserDao implements GenericDao<User> {
                 }
             }
         } catch (SQLException e) {
-            System.err.println("Error reading user: " + e.getMessage());
+            throw new DaoException("Failed to read user by id.", e);
         }
         return Optional.empty();
     }
@@ -62,7 +65,7 @@ public class UserDao implements GenericDao<User> {
             pstmt.setInt(4, user.getId());
             pstmt.executeUpdate();
         } catch (SQLException e) {
-            System.err.println("Error updating user: " + e.getMessage());
+            throw new DaoException("Failed to update user.", e);
         }
     }
 
@@ -73,7 +76,7 @@ public class UserDao implements GenericDao<User> {
             pstmt.setInt(1, id);
             pstmt.executeUpdate();
         } catch (SQLException e) {
-            System.err.println("Error deleting user: " + e.getMessage());
+            throw new DaoException("Failed to delete user.", e);
         }
     }
 
@@ -87,7 +90,7 @@ public class UserDao implements GenericDao<User> {
                 users.add(mapResultSetToUser(rs));
             }
         } catch (SQLException e) {
-            System.err.println("Error fetching all users: " + e.getMessage());
+            throw new DaoException("Failed to fetch all users.", e);
         }
         return users;
     }
@@ -102,7 +105,7 @@ public class UserDao implements GenericDao<User> {
                 }
             }
         } catch (SQLException e) {
-            System.err.println("Error reading user by username: " + e.getMessage());
+            throw new DaoException("Failed to read user by username.", e);
         }
         return Optional.empty();
     }
@@ -118,16 +121,13 @@ public class UserDao implements GenericDao<User> {
                 }
             }
         } catch (SQLException e) {
-            System.err.println("Error searching users: " + e.getMessage());
+            throw new DaoException("Failed to search users.", e);
         }
         return users;
     }
 
     private User mapResultSetToUser(ResultSet rs) throws SQLException {
-        LocalDateTime createdAt = null;
-        if (rs.getString("created_at") != null) {
-            createdAt = rs.getTimestamp("created_at").toLocalDateTime();
-        }
+        LocalDateTime createdAt = timeCodec.readDateTime(rs, "created_at");
         String role = rs.getString("role");
         String username = rs.getString("username");
         String passwordHash = rs.getString("password_hash");

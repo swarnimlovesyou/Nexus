@@ -7,7 +7,7 @@ CREATE TABLE IF NOT EXISTS users (
     username TEXT UNIQUE NOT NULL,
     password_hash TEXT NOT NULL,       -- Format: Base64(salt):Base64(SHA-256(salt+password))
     role TEXT NOT NULL,                -- 'ADMIN' | 'USER'
-    created_at TEXT DEFAULT CURRENT_TIMESTAMP
+    created_at INTEGER DEFAULT (strftime('%s','now'))
 );
 
 -- ── LLM Models ────────────────────────────────────────────────────────────────
@@ -16,7 +16,7 @@ CREATE TABLE IF NOT EXISTS llm_models (
     name TEXT NOT NULL,
     provider TEXT NOT NULL,
     cost_per_1k_tokens REAL NOT NULL,
-    created_at TEXT DEFAULT CURRENT_TIMESTAMP
+    created_at INTEGER DEFAULT (strftime('%s','now'))
 );
 
 -- ── Model Task Suitability ────────────────────────────────────────────────────
@@ -25,7 +25,7 @@ CREATE TABLE IF NOT EXISTS model_suitability (
     model_id INTEGER,
     task_type TEXT NOT NULL,           -- e.g. CODE_GENERATION, CREATIVE_WRITING, SUMMARIZATION...
     base_score REAL NOT NULL,          -- 0.0 - 1.0 expert-seeded weight
-    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    created_at INTEGER DEFAULT (strftime('%s','now')),
     FOREIGN KEY(model_id) REFERENCES llm_models(id)
 );
 
@@ -39,7 +39,7 @@ CREATE TABLE IF NOT EXISTS outcome_memories (
     cost REAL,                         -- Actual cost: model.cost_per_1k * (tokens / 1000)
     latency_ms INTEGER,                -- Wall-clock latency in milliseconds
     quality_score REAL,                -- User-rated 0.0 - 1.0
-    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    created_at INTEGER DEFAULT (strftime('%s','now')),
     FOREIGN KEY(user_id) REFERENCES users(id),
     FOREIGN KEY(model_id) REFERENCES llm_models(id)
 );
@@ -57,8 +57,8 @@ CREATE TABLE IF NOT EXISTS agent_sessions (
     total_cost REAL,
     quality_score REAL,
     notes TEXT,
-    ended_at TEXT,
-    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    ended_at INTEGER,
+    created_at INTEGER DEFAULT (strftime('%s','now')),
     FOREIGN KEY(user_id) REFERENCES users(id),
     FOREIGN KEY(model_id) REFERENCES llm_models(id)
 );
@@ -72,7 +72,7 @@ CREATE TABLE IF NOT EXISTS api_keys (
     alias TEXT NOT NULL,               -- User-defined label (e.g. "work-key")
     masked_key TEXT NOT NULL,          -- e.g. sk-abcd...ef12
     encoded_key TEXT NOT NULL,         -- XOR(rawKey, 0x4E) then Base64 encoded
-    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    created_at INTEGER DEFAULT (strftime('%s','now')),
     FOREIGN KEY(user_id) REFERENCES users(id)
 );
 
@@ -87,9 +87,9 @@ CREATE TABLE IF NOT EXISTS memories (
     type TEXT NOT NULL,                -- FACT | PREFERENCE | EPISODE | SKILL | CONTRADICTION
     confidence REAL DEFAULT 1.0,       -- Decays 5% per week if not accessed
     access_count INTEGER DEFAULT 0,
-    last_accessed_at TEXT,
-    expires_at TEXT,                   -- NULL = no expiry; calculated from MemoryType.getDefaultTtlDays()
-    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    last_accessed_at INTEGER,
+    expires_at INTEGER,                -- NULL = no expiry; calculated from MemoryType.getDefaultTtlDays()
+    created_at INTEGER DEFAULT (strftime('%s','now')),
     FOREIGN KEY(user_id) REFERENCES users(id)
 );
 
@@ -100,6 +100,6 @@ CREATE TABLE IF NOT EXISTS audit_log (
     action TEXT NOT NULL,              -- e.g. ROUTING_DECISION, MEMORY_STORE, API_KEY_ADD
     details TEXT,
     outcome TEXT DEFAULT 'SUCCESS',    -- SUCCESS | FAILURE
-    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    created_at INTEGER DEFAULT (strftime('%s','now')),
     FOREIGN KEY(user_id) REFERENCES users(id)
 );

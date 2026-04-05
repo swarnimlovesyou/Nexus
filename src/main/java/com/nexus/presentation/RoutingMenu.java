@@ -8,6 +8,7 @@ import com.nexus.domain.Memory;
 import com.nexus.domain.MemoryType;
 import com.nexus.domain.OutcomeMemory;
 import com.nexus.domain.TaskType;
+import com.nexus.exception.DaoException;
 import com.nexus.service.RoutingEngine;
 import com.nexus.util.TerminalUtils;
 
@@ -34,14 +35,14 @@ public class RoutingMenu {
         System.out.println();
         TerminalUtils.printPrompt(ctx.username());
         switch (ctx.scanner().nextLine().trim().toUpperCase()) {
-            case "1" -> routeTask();
-            case "2" -> explainRouting();
-            case "3" -> whatIfAnalysis();
-            case "4" -> recordOutcome();
-            case "5" -> testLiveCall();
-            case "6" -> startSession();
-            case "7" -> closeSession();
-            case "8" -> viewSessions();
+            case "1" -> ctx.runWithDaoGuard("Unable to route task right now. Please try again.", this::routeTask);
+            case "2" -> ctx.runWithDaoGuard("Unable to explain routing right now. Please try again.", this::explainRouting);
+            case "3" -> ctx.runWithDaoGuard("Unable to run what-if analysis right now. Please try again.", this::whatIfAnalysis);
+            case "4" -> ctx.runWithDaoGuard("Could not record outcome. Database operation failed; no changes were saved.", this::recordOutcome);
+            case "5" -> ctx.runWithDaoGuard("Unable to complete live call flow right now due to a database issue.", this::testLiveCall);
+            case "6" -> ctx.runWithDaoGuard("Could not start session. Database operation failed; no changes were saved.", this::startSession);
+            case "7" -> ctx.runWithDaoGuard("Could not close session. Database operation failed; no changes were saved.", this::closeSession);
+            case "8" -> ctx.runWithDaoGuard("Unable to load sessions right now. Please try again.", this::viewSessions);
         }
     }
 
@@ -151,8 +152,12 @@ public class RoutingMenu {
                 model.getName(), task.name(), quality, latency, actualCost
             );
             String episodeTags = model.getName().toLowerCase() + "," + task.name().toLowerCase();
-            Memory episodeMem = ctx.memoryService().store(ctx.userId(), episodeContent, episodeTags, MemoryType.EPISODE, 90);
-            TerminalUtils.printSuccess("EPISODE memory #" + episodeMem.getId() + " created in vault.");
+            try {
+                Memory episodeMem = ctx.memoryService().store(ctx.userId(), episodeContent, episodeTags, MemoryType.EPISODE, 90);
+                TerminalUtils.printSuccess("EPISODE memory #" + episodeMem.getId() + " created in vault.");
+            } catch (DaoException e) {
+                TerminalUtils.printWarn("Outcome was recorded, but EPISODE memory could not be saved right now.");
+            }
         }
     }
 
@@ -185,7 +190,8 @@ public class RoutingMenu {
                 task, resp.costUsd(), (int)resp.latencyMs(), resp.simulated() ? 0.70 : 0.90, null);
             ctx.outcomeDao().create(rec);
             TerminalUtils.printSuccess("Outcome automatically recorded to telemetry loop.");
-            
+        } catch (DaoException e) {
+            TerminalUtils.printError("Live call finished, but telemetry could not be saved. Please retry later.");
         } catch (Exception e) {
             TerminalUtils.printError("Call failed: " + e.getMessage());
         }
@@ -248,7 +254,11 @@ public class RoutingMenu {
             sid, closed.getTaskType(), closed.getModelId(),
             closed.getInputTokens(), closed.getOutputTokens(), closed.getQualityScore(), closed.getTotalCost()
         );
-        ctx.memoryService().store(ctx.userId(), episode, "session," + closed.getTaskType().name().toLowerCase(), MemoryType.EPISODE, 90);
+        try {
+            ctx.memoryService().store(ctx.userId(), episode, "session," + closed.getTaskType().name().toLowerCase(), MemoryType.EPISODE, 90);
+        } catch (DaoException e) {
+            TerminalUtils.printWarn("Session was closed, but EPISODE memory could not be saved right now.");
+        }
     }
 
     private void viewSessions() {

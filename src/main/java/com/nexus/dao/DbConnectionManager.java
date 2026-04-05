@@ -1,5 +1,7 @@
 package com.nexus.dao;
 
+import com.nexus.exception.DaoException;
+
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
@@ -19,8 +21,9 @@ public class DbConnectionManager {
                 fk.execute("PRAGMA foreign_keys = ON");
             }
             initializeDatabase();
+            migrateLegacyTimestamps();
         } catch (ClassNotFoundException | SQLException e) {
-            System.err.println("Database connection failed: " + e.getMessage());
+            throw new DaoException("Database connection failed.", e);
         }
     }
 
@@ -33,6 +36,38 @@ public class DbConnectionManager {
 
     public Connection getConnection() { return connection; }
 
+    @FunctionalInterface
+    public interface TransactionWork<T> {
+        T execute();
+    }
+
+    public synchronized <T> T withTransaction(TransactionWork<T> work) {
+        if (connection == null) {
+            throw new DaoException("Database connection is not available for transaction.");
+        }
+
+        try {
+            boolean previousAutoCommit = connection.getAutoCommit();
+            connection.setAutoCommit(false);
+            try {
+                T result = work.execute();
+                connection.commit();
+                return result;
+            } catch (RuntimeException e) {
+                try {
+                    connection.rollback();
+                } catch (SQLException rollbackError) {
+                    throw new DaoException("Transaction rollback failed.", rollbackError);
+                }
+                throw e;
+            } finally {
+                connection.setAutoCommit(previousAutoCommit);
+            }
+        } catch (SQLException e) {
+            throw new DaoException("Transaction management failed.", e);
+        }
+    }
+
     private void initializeDatabase() {
         try (Statement stmt = connection.createStatement()) {
             // ── Users ───────────────────────────────────────────────────────
@@ -42,7 +77,7 @@ public class DbConnectionManager {
                     username TEXT UNIQUE NOT NULL,
                     password_hash TEXT NOT NULL,
                     role TEXT NOT NULL,
-                    created_at TEXT DEFAULT CURRENT_TIMESTAMP
+                    created_at INTEGER DEFAULT (strftime('%s','now'))
                 )""");
 
             // ── LLM Models ──────────────────────────────────────────────────
@@ -52,7 +87,7 @@ public class DbConnectionManager {
                     name TEXT NOT NULL,
                     provider TEXT NOT NULL,
                     cost_per_1k_tokens REAL NOT NULL,
-                    created_at TEXT DEFAULT CURRENT_TIMESTAMP
+                    created_at INTEGER DEFAULT (strftime('%s','now'))
                 )""");
 
             // ── Model Suitability ───────────────────────────────────────────
@@ -62,7 +97,7 @@ public class DbConnectionManager {
                     model_id INTEGER,
                     task_type TEXT NOT NULL,
                     base_score REAL NOT NULL,
-                    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                    created_at INTEGER DEFAULT (strftime('%s','now')),
                     FOREIGN KEY(model_id) REFERENCES llm_models(id)
                 )""");
 
@@ -76,7 +111,7 @@ public class DbConnectionManager {
                     cost REAL,
                     latency_ms INTEGER,
                     quality_score REAL,
-                    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                    created_at INTEGER DEFAULT (strftime('%s','now')),
                     FOREIGN KEY(user_id) REFERENCES users(id),
                     FOREIGN KEY(model_id) REFERENCES llm_models(id)
                 )""");
@@ -94,8 +129,8 @@ public class DbConnectionManager {
                     total_cost REAL,
                     quality_score REAL,
                     notes TEXT,
-                    ended_at TEXT,
-                    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                    ended_at INTEGER,
+                    created_at INTEGER DEFAULT (strftime('%s','now')),
                     FOREIGN KEY(user_id) REFERENCES users(id),
                     FOREIGN KEY(model_id) REFERENCES llm_models(id)
                 )""");
@@ -109,7 +144,7 @@ public class DbConnectionManager {
                     alias TEXT NOT NULL,
                     masked_key TEXT NOT NULL,
                     encoded_key TEXT NOT NULL,
-                    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                    created_at INTEGER DEFAULT (strftime('%s','now')),
                     FOREIGN KEY(user_id) REFERENCES users(id)
                 )""");
 
@@ -124,9 +159,9 @@ public class DbConnectionManager {
                     type TEXT NOT NULL,
                     confidence REAL DEFAULT 1.0,
                     access_count INTEGER DEFAULT 0,
-                    last_accessed_at TEXT,
-                    expires_at TEXT,
-                    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                    last_accessed_at INTEGER,
+                    expires_at INTEGER,
+                    created_at INTEGER DEFAULT (strftime('%s','now')),
                     FOREIGN KEY(user_id) REFERENCES users(id)
                 )""");
 
@@ -138,12 +173,39 @@ public class DbConnectionManager {
                     action TEXT NOT NULL,
                     details TEXT,
                     outcome TEXT DEFAULT 'SUCCESS',
-                    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                    created_at INTEGER DEFAULT (strftime('%s','now')),
                     FOREIGN KEY(user_id) REFERENCES users(id)
                 )""");
 
         } catch (SQLException e) {
-            System.err.println("Failed to initialize DB: " + e.getMessage());
+            throw new DaoException("Failed to initialize DB.", e);
         }
+    }
+
+    private void migrateLegacyTimestamps() {
+        try (Statement stmt = connection.createStatement()) {
+            migrateColumn(stmt, "users", "created_at");
+            migrateColumn(stmt, "llm_models", "created_at");
+            migrateColumn(stmt, "model_suitability", "created_at");
+            migrateColumn(stmt, "outcome_memories", "created_at");
+            migrateColumn(stmt, "agent_sessions", "created_at");
+            migrateColumn(stmt, "agent_sessions", "ended_at");
+            migrateColumn(stmt, "api_keys", "created_at");
+            migrateColumn(stmt, "memories", "created_at");
+            migrateColumn(stmt, "memories", "last_accessed_at");
+            migrateColumn(stmt, "memories", "expires_at");
+            migrateColumn(stmt, "audit_log", "created_at");
+        } catch (SQLException e) {
+            throw new DaoException("Failed to migrate legacy timestamps.", e);
+        }
+    }
+
+    private void migrateColumn(Statement stmt, String table, String column) throws SQLException {
+        String sql = String.format(
+            "UPDATE %s SET %s = CAST(strftime('%%s', replace(substr(%s,1,19), 'T', ' ')) AS INTEGER) " +
+            "WHERE %s IS NOT NULL AND %s LIKE '____-__-__%%'",
+            table, column, column, column, column
+        );
+        stmt.executeUpdate(sql);
     }
 }

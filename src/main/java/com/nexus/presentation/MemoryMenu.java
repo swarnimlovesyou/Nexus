@@ -32,16 +32,16 @@ public class MemoryMenu {
         System.out.println();
         TerminalUtils.printPrompt(ctx.username());
         switch (ctx.scanner().nextLine().trim().toUpperCase()) {
-            case "1" -> storeMemory();
-            case "2" -> recallMemories();
-            case "3" -> viewVault();
-            case "4" -> forgetMemory();
-            case "5" -> contradictionGraph();
-            case "6" -> runDecay();
-            case "7" -> pruneMemories();
-            case "8" -> filterByType();
-            case "9" -> editMemory();
-            case "E" -> exportVault();
+            case "1" -> ctx.runWithDaoGuard("Could not store memory. Database operation failed; no changes were saved.", this::storeMemory);
+            case "2" -> ctx.runWithDaoGuard("Unable to recall memories right now. Please try again.", this::recallMemories);
+            case "3" -> ctx.runWithDaoGuard("Unable to load memory vault right now. Please try again.", this::viewVault);
+            case "4" -> ctx.runWithDaoGuard("Could not forget memory. Database operation failed; no changes were saved.", this::forgetMemory);
+            case "5" -> ctx.runWithDaoGuard("Unable to load contradiction graph right now. Please try again.", this::contradictionGraph);
+            case "6" -> ctx.runWithDaoGuard("Could not run decay pass. Database operation failed; no changes were saved.", this::runDecay);
+            case "7" -> ctx.runWithDaoGuard("Could not prune memories. Database operation failed; no changes were saved.", this::pruneMemories);
+            case "8" -> ctx.runWithDaoGuard("Unable to filter memories right now. Please try again.", this::filterByType);
+            case "9" -> ctx.runWithDaoGuard("Could not edit memory. Database operation failed; no changes were saved.", this::editMemory);
+            case "E" -> ctx.runWithDaoGuard("Could not export vault right now because memory data could not be loaded.", this::exportVault);
         }
     }
 

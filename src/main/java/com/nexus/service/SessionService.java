@@ -1,10 +1,12 @@
 package com.nexus.service;
 
+import java.time.Clock;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
 
 import com.nexus.dao.AuditLogDao;
+import com.nexus.dao.DbConnectionManager;
 import com.nexus.dao.LlmModelDao;
 import com.nexus.dao.OutcomeMemoryDao;
 import com.nexus.dao.SessionDao;
@@ -25,12 +27,23 @@ public class SessionService {
     private final LlmModelDao modelDao;
     private final OutcomeMemoryDao outcomeDao;
     private final AuditLogDao auditLogDao;
+    private final Clock clock;
 
     public SessionService() {
-        this.sessionDao = new SessionDao();
-        this.modelDao = new LlmModelDao();
-        this.outcomeDao = new OutcomeMemoryDao();
-        this.auditLogDao = new AuditLogDao();
+        this(Clock.systemUTC());
+    }
+
+    public SessionService(Clock clock) {
+        this(new SessionDao(), new LlmModelDao(), new OutcomeMemoryDao(), new AuditLogDao(), clock);
+    }
+
+    SessionService(SessionDao sessionDao, LlmModelDao modelDao, OutcomeMemoryDao outcomeDao,
+                   AuditLogDao auditLogDao, Clock clock) {
+        this.sessionDao = sessionDao;
+        this.modelDao = modelDao;
+        this.outcomeDao = outcomeDao;
+        this.auditLogDao = auditLogDao;
+        this.clock = clock;
     }
 
     public AgentSession startSession(int userId, TaskType taskType, int modelId, String notes) {
@@ -49,11 +62,13 @@ public class SessionService {
         session.setModelId(modelId);
         session.setStatus("ACTIVE");
         session.setNotes(notes == null ? "" : notes.trim());
-        sessionDao.create(session);
-
-        auditLogDao.create(new AuditLog(null, userId, "SESSION_START",
-            "sessionId=" + session.getId() + " task=" + taskType + " modelId=" + modelId,
-            "SUCCESS", null));
+        DbConnectionManager.getInstance().withTransaction(() -> {
+            sessionDao.create(session);
+            auditLogDao.create(new AuditLog(null, userId, "SESSION_START",
+                "sessionId=" + session.getId() + " task=" + taskType + " modelId=" + modelId,
+                "SUCCESS", null));
+            return session;
+        });
 
         return session;
     }
@@ -84,7 +99,7 @@ public class SessionService {
 
         int totalTokens = inputTokens + outputTokens;
         double totalCost = (totalTokens / 1000.0) * model.getCostPer1kTokens();
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now(clock);
 
         session.setInputTokens(inputTokens);
         session.setOutputTokens(outputTokens);
@@ -95,7 +110,6 @@ public class SessionService {
         if (notes != null && !notes.trim().isEmpty()) {
             session.setNotes(notes.trim());
         }
-        sessionDao.update(session);
 
         long latencyMsLong = Duration.between(session.getCreatedAt(), now).toMillis();
         int latencyMs = latencyMsLong > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) latencyMsLong;
@@ -110,11 +124,14 @@ public class SessionService {
             qualityScore,
             null
         );
-        outcomeDao.create(outcome);
-
-        auditLogDao.create(new AuditLog(null, userId, "SESSION_CLOSE",
-            "sessionId=" + sessionId + " outcomeId=" + outcome.getId() + " totalCost=" + String.format("%.6f", totalCost),
-            "SUCCESS", null));
+        DbConnectionManager.getInstance().withTransaction(() -> {
+            sessionDao.update(session);
+            outcomeDao.create(outcome);
+            auditLogDao.create(new AuditLog(null, userId, "SESSION_CLOSE",
+                "sessionId=" + sessionId + " outcomeId=" + outcome.getId() + " totalCost=" + String.format("%.6f", totalCost),
+                "SUCCESS", null));
+            return session;
+        });
 
         return session;
     }
