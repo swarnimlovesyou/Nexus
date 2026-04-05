@@ -1,6 +1,7 @@
 package com.nexus.dao;
 
 import com.nexus.domain.AuditLog;
+import com.nexus.exception.DaoException;
 
 import java.sql.*;
 import java.time.LocalDateTime;
@@ -30,12 +31,51 @@ public class AuditLogDao implements GenericDao<AuditLog> {
             try (ResultSet rs = pstmt.getGeneratedKeys()) {
                 if (rs.next()) log.setId(rs.getInt(1));
             }
-        } catch (SQLException e) { System.err.println("Audit log error: " + e.getMessage()); }
+        } catch (SQLException e) {
+            throw new DaoException("Failed to create audit log.", e);
+        }
     }
 
-    @Override public Optional<AuditLog> read(Integer id) { return Optional.empty(); }
-    @Override public void update(AuditLog entity) {}
-    @Override public void delete(Integer id) {}
+    @Override
+    public Optional<AuditLog> read(Integer id) {
+        String sql = "SELECT * FROM audit_log WHERE id=?";
+        try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
+            pstmt.setInt(1, id);
+            try (ResultSet rs = pstmt.executeQuery()) {
+                if (rs.next()) return Optional.of(map(rs));
+            }
+        } catch (SQLException e) {
+            throw new DaoException("Failed to read audit log by id.", e);
+        }
+        return Optional.empty();
+    }
+
+    @Override
+    public void update(AuditLog entity) {
+        String sql = "UPDATE audit_log SET user_id=?, action=?, details=?, outcome=? WHERE id=?";
+        try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
+            if (entity.getUserId() != null) pstmt.setInt(1, entity.getUserId());
+            else pstmt.setNull(1, Types.INTEGER);
+            pstmt.setString(2, entity.getAction());
+            pstmt.setString(3, entity.getDetails());
+            pstmt.setString(4, entity.getOutcome());
+            pstmt.setInt(5, entity.getId());
+            pstmt.executeUpdate();
+        } catch (SQLException e) {
+            throw new DaoException("Failed to update audit log.", e);
+        }
+    }
+
+    @Override
+    public void delete(Integer id) {
+        String sql = "DELETE FROM audit_log WHERE id=?";
+        try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
+            pstmt.setInt(1, id);
+            pstmt.executeUpdate();
+        } catch (SQLException e) {
+            throw new DaoException("Failed to delete audit log.", e);
+        }
+    }
 
     @Override
     public List<AuditLog> findAll() {
@@ -43,7 +83,9 @@ public class AuditLogDao implements GenericDao<AuditLog> {
         try (Statement stmt = connection.createStatement();
              ResultSet rs = stmt.executeQuery("SELECT * FROM audit_log ORDER BY created_at DESC LIMIT 200")) {
             while (rs.next()) list.add(map(rs));
-        } catch (SQLException e) { System.err.println(e.getMessage()); }
+        } catch (SQLException e) {
+            throw new DaoException("Failed to fetch audit logs.", e);
+        }
         return list;
     }
 
@@ -53,7 +95,9 @@ public class AuditLogDao implements GenericDao<AuditLog> {
                 "SELECT * FROM audit_log WHERE user_id=? ORDER BY created_at DESC LIMIT 100")) {
             pstmt.setInt(1, userId);
             try (ResultSet rs = pstmt.executeQuery()) { while (rs.next()) list.add(map(rs)); }
-        } catch (SQLException e) { System.err.println(e.getMessage()); }
+        } catch (SQLException e) {
+            throw new DaoException("Failed to fetch audit logs by user.", e);
+        }
         return list;
     }
 

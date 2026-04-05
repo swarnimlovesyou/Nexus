@@ -2,6 +2,7 @@ package com.nexus.dao;
 
 import com.nexus.domain.ModelSuitability;
 import com.nexus.domain.TaskType;
+import com.nexus.exception.DaoException;
 
 import java.sql.*;
 import java.time.LocalDateTime;
@@ -33,7 +34,7 @@ public class SuitabilityDao implements GenericDao<ModelSuitability> {
                 }
             }
         } catch (SQLException e) {
-            System.err.println("Error creating suitability: " + e.getMessage());
+            throw new DaoException("Failed to create suitability mapping.", e);
         }
     }
 
@@ -48,7 +49,7 @@ public class SuitabilityDao implements GenericDao<ModelSuitability> {
                 }
             }
         } catch (SQLException e) {
-            System.err.println("Error reading suitability: " + e.getMessage());
+            throw new DaoException("Failed to read suitability mapping by id.", e);
         }
         return Optional.empty();
     }
@@ -63,7 +64,7 @@ public class SuitabilityDao implements GenericDao<ModelSuitability> {
             pstmt.setInt(4, suitability.getId());
             pstmt.executeUpdate();
         } catch (SQLException e) {
-            System.err.println("Error updating suitability: " + e.getMessage());
+            throw new DaoException("Failed to update suitability mapping.", e);
         }
     }
 
@@ -74,7 +75,7 @@ public class SuitabilityDao implements GenericDao<ModelSuitability> {
             pstmt.setInt(1, id);
             pstmt.executeUpdate();
         } catch (SQLException e) {
-            System.err.println("Error deleting suitability: " + e.getMessage());
+            throw new DaoException("Failed to delete suitability mapping.", e);
         }
     }
 
@@ -88,7 +89,7 @@ public class SuitabilityDao implements GenericDao<ModelSuitability> {
                 list.add(mapResultSetToSuitability(rs));
             }
         } catch (SQLException e) {
-            System.err.println("Error fetching all suitabilities: " + e.getMessage());
+            throw new DaoException("Failed to fetch suitability mappings.", e);
         }
         return list;
     }
@@ -104,7 +105,7 @@ public class SuitabilityDao implements GenericDao<ModelSuitability> {
                 }
             }
         } catch (SQLException e) {
-            System.err.println("Error fetching suitabilities by task type: " + e.getMessage());
+            throw new DaoException("Failed to fetch suitability mappings by task type.", e);
         }
         return list;
     }

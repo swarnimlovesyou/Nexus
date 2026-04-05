@@ -2,6 +2,7 @@ package com.nexus.dao;
 
 import com.nexus.domain.Memory;
 import com.nexus.domain.MemoryType;
+import com.nexus.exception.DaoException;
 
 import java.sql.*;
 import java.time.LocalDateTime;
@@ -33,7 +34,9 @@ public class MemoryDao implements GenericDao<Memory> {
             try (ResultSet rs = pstmt.getGeneratedKeys()) {
                 if (rs.next()) mem.setId(rs.getInt(1));
             }
-        } catch (SQLException e) { System.err.println("Error storing memory: " + e.getMessage()); }
+        } catch (SQLException e) {
+            throw new DaoException("Failed to store memory.", e);
+        }
     }
 
     @Override
@@ -43,7 +46,9 @@ public class MemoryDao implements GenericDao<Memory> {
             try (ResultSet rs = pstmt.executeQuery()) {
                 if (rs.next()) return Optional.of(map(rs));
             }
-        } catch (SQLException e) { System.err.println(e.getMessage()); }
+        } catch (SQLException e) {
+            throw new DaoException("Failed to read memory by id.", e);
+        }
         return Optional.empty();
     }
 
@@ -58,7 +63,9 @@ public class MemoryDao implements GenericDao<Memory> {
             timeCodec.setDateTime(pstmt, 5, mem.getExpiresAt());
             pstmt.setInt(6, mem.getId());
             pstmt.executeUpdate();
-        } catch (SQLException e) { System.err.println(e.getMessage()); }
+        } catch (SQLException e) {
+            throw new DaoException("Failed to update memory.", e);
+        }
     }
 
     @Override
@@ -66,7 +73,9 @@ public class MemoryDao implements GenericDao<Memory> {
         try (PreparedStatement pstmt = connection.prepareStatement("DELETE FROM memories WHERE id=?")) {
             pstmt.setInt(1, id);
             pstmt.executeUpdate();
-        } catch (SQLException e) { System.err.println(e.getMessage()); }
+        } catch (SQLException e) {
+            throw new DaoException("Failed to delete memory.", e);
+        }
     }
 
     public boolean deleteByIdAndUserId(int id, int userId) {
@@ -76,8 +85,7 @@ public class MemoryDao implements GenericDao<Memory> {
             pstmt.setInt(2, userId);
             return pstmt.executeUpdate() > 0;
         } catch (SQLException e) {
-            System.err.println(e.getMessage());
-            return false;
+            throw new DaoException("Failed to delete memory by id and user.", e);
         }
     }
 
@@ -87,7 +95,9 @@ public class MemoryDao implements GenericDao<Memory> {
         try (Statement stmt = connection.createStatement();
              ResultSet rs = stmt.executeQuery("SELECT * FROM memories ORDER BY confidence DESC")) {
             while (rs.next()) list.add(map(rs));
-        } catch (SQLException e) { System.err.println(e.getMessage()); }
+        } catch (SQLException e) {
+            throw new DaoException("Failed to fetch memories.", e);
+        }
         return list;
     }
 
@@ -97,7 +107,9 @@ public class MemoryDao implements GenericDao<Memory> {
                 "SELECT * FROM memories WHERE user_id=? ORDER BY confidence DESC")) {
             pstmt.setInt(1, userId);
             try (ResultSet rs = pstmt.executeQuery()) { while (rs.next()) list.add(map(rs)); }
-        } catch (SQLException e) { System.err.println(e.getMessage()); }
+        } catch (SQLException e) {
+            throw new DaoException("Failed to fetch memories by user.", e);
+        }
         return list;
     }
 
@@ -108,7 +120,9 @@ public class MemoryDao implements GenericDao<Memory> {
             String like = "%" + query + "%";
             pstmt.setInt(1, userId); pstmt.setString(2, like); pstmt.setString(3, like);
             try (ResultSet rs = pstmt.executeQuery()) { while (rs.next()) list.add(map(rs)); }
-        } catch (SQLException e) { System.err.println(e.getMessage()); }
+        } catch (SQLException e) {
+            throw new DaoException("Failed to search memories.", e);
+        }
         return list;
     }
 
@@ -118,7 +132,9 @@ public class MemoryDao implements GenericDao<Memory> {
                 "SELECT * FROM memories WHERE user_id=? AND type=? ORDER BY confidence DESC")) {
             pstmt.setInt(1, userId); pstmt.setString(2, type.name());
             try (ResultSet rs = pstmt.executeQuery()) { while (rs.next()) list.add(map(rs)); }
-        } catch (SQLException e) { System.err.println(e.getMessage()); }
+        } catch (SQLException e) {
+            throw new DaoException("Failed to fetch memories by type.", e);
+        }
         return list;
     }
 
@@ -129,7 +145,9 @@ public class MemoryDao implements GenericDao<Memory> {
             pstmt.setLong(2, timeCodec.nowEpochSeconds());
             pstmt.setInt(3, id);
             pstmt.executeUpdate();
-        } catch (SQLException e) { System.err.println(e.getMessage()); }
+        } catch (SQLException e) {
+            throw new DaoException("Failed to update memory confidence and access metadata.", e);
+        }
     }
 
     public int pruneStale(int userId) {
@@ -138,7 +156,9 @@ public class MemoryDao implements GenericDao<Memory> {
             pstmt.setInt(1, userId);
             pstmt.setLong(2, timeCodec.nowEpochSeconds());
             return pstmt.executeUpdate();
-        } catch (SQLException e) { System.err.println(e.getMessage()); return 0; }
+        } catch (SQLException e) {
+            throw new DaoException("Failed to prune stale memories.", e);
+        }
     }
 
     public List<Memory> findContradictions(int userId) {

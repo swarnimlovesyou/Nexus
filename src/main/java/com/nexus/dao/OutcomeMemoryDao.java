@@ -12,6 +12,7 @@ import java.util.Optional;
 
 import com.nexus.domain.OutcomeMemory;
 import com.nexus.domain.TaskType;
+import com.nexus.exception.DaoException;
 
 public class OutcomeMemoryDao implements GenericDao<OutcomeMemory> {
     private final Connection connection;
@@ -40,7 +41,7 @@ public class OutcomeMemoryDao implements GenericDao<OutcomeMemory> {
                 }
             }
         } catch (SQLException e) {
-            System.err.println("Error creating outcome memory: " + e.getMessage());
+            throw new DaoException("Failed to create outcome memory.", e);
         }
     }
 
@@ -55,7 +56,7 @@ public class OutcomeMemoryDao implements GenericDao<OutcomeMemory> {
                 }
             }
         } catch (SQLException e) {
-            System.err.println("Error reading memory: " + e.getMessage());
+            throw new DaoException("Failed to read outcome memory by id.", e);
         }
         return Optional.empty();
     }
@@ -73,7 +74,7 @@ public class OutcomeMemoryDao implements GenericDao<OutcomeMemory> {
             pstmt.setInt(7, memory.getId());
             pstmt.executeUpdate();
         } catch (SQLException e) {
-            System.err.println("Error updating memory: " + e.getMessage());
+            throw new DaoException("Failed to update outcome memory.", e);
         }
     }
 
@@ -84,7 +85,7 @@ public class OutcomeMemoryDao implements GenericDao<OutcomeMemory> {
             pstmt.setInt(1, id);
             pstmt.executeUpdate();
         } catch (SQLException e) {
-            System.err.println("Error deleting memory: " + e.getMessage());
+            throw new DaoException("Failed to delete outcome memory.", e);
         }
     }
 
@@ -98,7 +99,7 @@ public class OutcomeMemoryDao implements GenericDao<OutcomeMemory> {
                 list.add(mapResultSetToMemory(rs));
             }
         } catch (SQLException e) {
-            System.err.println("Error fetching all memories: " + e.getMessage());
+            throw new DaoException("Failed to fetch all outcome memories.", e);
         }
         return list;
     }
@@ -114,7 +115,7 @@ public class OutcomeMemoryDao implements GenericDao<OutcomeMemory> {
                 }
             }
         } catch (SQLException e) {
-            System.err.println("Error fetching memories by user id: " + e.getMessage());
+            throw new DaoException("Failed to fetch outcome memories by user id.", e);
         }
         return list;
     }
@@ -130,7 +131,7 @@ public class OutcomeMemoryDao implements GenericDao<OutcomeMemory> {
                 }
             }
         } catch (SQLException e) {
-            System.err.println("Error fetching memories by task type: " + e.getMessage());
+            throw new DaoException("Failed to fetch outcome memories by task type.", e);
         }
         return list;
     }
@@ -147,7 +148,7 @@ public class OutcomeMemoryDao implements GenericDao<OutcomeMemory> {
                 }
             }
         } catch (SQLException e) {
-            System.err.println("Error fetching memories by user/task: " + e.getMessage());
+            throw new DaoException("Failed to fetch outcome memories by user and task type.", e);
         }
         return list;
     }
@@ -163,7 +164,7 @@ public class OutcomeMemoryDao implements GenericDao<OutcomeMemory> {
                 }
             }
         } catch (SQLException e) {
-            System.err.println("Error fetching memories by model id: " + e.getMessage());
+            throw new DaoException("Failed to fetch outcome memories by model id.", e);
         }
         return list;
     }
@@ -180,7 +181,7 @@ public class OutcomeMemoryDao implements GenericDao<OutcomeMemory> {
                 }
             }
         } catch (SQLException e) {
-            System.err.println("Error fetching memories by user/model: " + e.getMessage());
+            throw new DaoException("Failed to fetch outcome memories by user and model id.", e);
         }
         return list;
     }
@@ -201,7 +202,7 @@ public class OutcomeMemoryDao implements GenericDao<OutcomeMemory> {
                 while (rs.next()) list.add(mapResultSetToMemory(rs));
             }
         } catch (SQLException e) {
-            System.err.println("Error fetching by date range: " + e.getMessage());
+            throw new DaoException("Failed to fetch outcome memories by date range.", e);
         }
         return list;
     }
@@ -217,7 +218,7 @@ public class OutcomeMemoryDao implements GenericDao<OutcomeMemory> {
                 while (rs.next()) list.add(mapResultSetToMemory(rs));
             }
         } catch (SQLException e) {
-            System.err.println("Error fetching by user/date range: " + e.getMessage());
+            throw new DaoException("Failed to fetch outcome memories by user and date range.", e);
         }
         return list;
     }

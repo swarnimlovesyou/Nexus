@@ -1,6 +1,7 @@
 package com.nexus.dao;
 
 import com.nexus.domain.LlmModel;
+import com.nexus.exception.DaoException;
 
 import java.sql.*;
 import java.time.LocalDateTime;
@@ -32,7 +33,7 @@ public class LlmModelDao implements GenericDao<LlmModel> {
                 }
             }
         } catch (SQLException e) {
-            System.err.println("Error creating model: " + e.getMessage());
+            throw new DaoException("Failed to create model.", e);
         }
     }
 
@@ -47,7 +48,7 @@ public class LlmModelDao implements GenericDao<LlmModel> {
                 }
             }
         } catch (SQLException e) {
-            System.err.println("Error reading model: " + e.getMessage());
+            throw new DaoException("Failed to read model by id.", e);
         }
         return Optional.empty();
     }
@@ -62,7 +63,7 @@ public class LlmModelDao implements GenericDao<LlmModel> {
             pstmt.setInt(4, model.getId());
             pstmt.executeUpdate();
         } catch (SQLException e) {
-            System.err.println("Error updating model: " + e.getMessage());
+            throw new DaoException("Failed to update model.", e);
         }
     }
 
@@ -73,7 +74,7 @@ public class LlmModelDao implements GenericDao<LlmModel> {
             pstmt.setInt(1, id);
             pstmt.executeUpdate();
         } catch (SQLException e) {
-            System.err.println("Error deleting model: " + e.getMessage());
+            throw new DaoException("Failed to delete model.", e);
         }
     }
 
@@ -87,7 +88,7 @@ public class LlmModelDao implements GenericDao<LlmModel> {
                 models.add(mapResultSetToModel(rs));
             }
         } catch (SQLException e) {
-            System.err.println("Error fetching all models: " + e.getMessage());
+            throw new DaoException("Failed to fetch models.", e);
         }
         return models;
     }
@@ -103,7 +104,7 @@ public class LlmModelDao implements GenericDao<LlmModel> {
                 }
             }
         } catch (SQLException e) {
-            System.err.println("Error filtering models by provider: " + e.getMessage());
+            throw new DaoException("Failed to filter models by provider.", e);
         }
         return models;
     }

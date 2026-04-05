@@ -1,5 +1,7 @@
 package com.nexus.dao;
 
+import com.nexus.exception.DaoException;
+
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
@@ -21,7 +23,7 @@ public class DbConnectionManager {
             initializeDatabase();
             migrateLegacyTimestamps();
         } catch (ClassNotFoundException | SQLException e) {
-            System.err.println("Database connection failed: " + e.getMessage());
+            throw new DaoException("Database connection failed.", e);
         }
     }
 
@@ -33,6 +35,38 @@ public class DbConnectionManager {
     }
 
     public Connection getConnection() { return connection; }
+
+    @FunctionalInterface
+    public interface TransactionWork<T> {
+        T execute();
+    }
+
+    public synchronized <T> T withTransaction(TransactionWork<T> work) {
+        if (connection == null) {
+            throw new DaoException("Database connection is not available for transaction.");
+        }
+
+        try {
+            boolean previousAutoCommit = connection.getAutoCommit();
+            connection.setAutoCommit(false);
+            try {
+                T result = work.execute();
+                connection.commit();
+                return result;
+            } catch (RuntimeException e) {
+                try {
+                    connection.rollback();
+                } catch (SQLException rollbackError) {
+                    throw new DaoException("Transaction rollback failed.", rollbackError);
+                }
+                throw e;
+            } finally {
+                connection.setAutoCommit(previousAutoCommit);
+            }
+        } catch (SQLException e) {
+            throw new DaoException("Transaction management failed.", e);
+        }
+    }
 
     private void initializeDatabase() {
         try (Statement stmt = connection.createStatement()) {
@@ -144,7 +178,7 @@ public class DbConnectionManager {
                 )""");
 
         } catch (SQLException e) {
-            System.err.println("Failed to initialize DB: " + e.getMessage());
+            throw new DaoException("Failed to initialize DB.", e);
         }
     }
 
@@ -162,7 +196,7 @@ public class DbConnectionManager {
             migrateColumn(stmt, "memories", "expires_at");
             migrateColumn(stmt, "audit_log", "created_at");
         } catch (SQLException e) {
-            System.err.println("Failed to migrate legacy timestamps: " + e.getMessage());
+            throw new DaoException("Failed to migrate legacy timestamps.", e);
         }
     }
 
