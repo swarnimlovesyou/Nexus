@@ -49,20 +49,18 @@ public class DbTimeCodec {
     }
 
     public LocalDateTime readDateTime(ResultSet rs, String columnLabel) throws SQLException {
-        Object raw = rs.getObject(columnLabel);
-        if (raw == null) return null;
-
-        if (raw instanceof Number n) {
-            return fromEpochAuto(n.longValue());
+        try {
+            String raw = rs.getString(columnLabel);
+            return parseString(raw);
+        } catch (Exception e) {
+            // Fallback to getObject if getString somehow fails (rare in SQLite)
+            try {
+                Object obj = rs.getObject(columnLabel);
+                if (obj instanceof Number n) return fromEpochAuto(n.longValue());
+                if (obj instanceof Timestamp ts) return ts.toLocalDateTime();
+            } catch (Exception ignored) {}
+            return null;
         }
-        if (raw instanceof Timestamp ts) {
-            return ts.toLocalDateTime();
-        }
-        if (raw instanceof String s) {
-            return parseString(s);
-        }
-
-        return parseString(rs.getString(columnLabel));
     }
 
     private LocalDateTime fromEpochAuto(long value) {
