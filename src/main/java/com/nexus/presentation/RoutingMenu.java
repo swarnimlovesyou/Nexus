@@ -32,6 +32,8 @@ public class RoutingMenu {
             System.out.println("  " + TerminalUtils.AMBER + "6" + TerminalUtils.RESET + "  Start Session Context");
             System.out.println("  " + TerminalUtils.AMBER + "7" + TerminalUtils.RESET + "  Close Active Session");
             System.out.println("  " + TerminalUtils.AMBER + "8" + TerminalUtils.RESET + "  View My Sessions");
+            System.out.println("  " + TerminalUtils.AMBER + "9" + TerminalUtils.RESET + "  Decompose & Execute Plan  " + TerminalUtils.GRAY + "(agentic split)" + TerminalUtils.RESET);
+            System.out.println("  " + TerminalUtils.AMBER + "C" + TerminalUtils.RESET + "  Manual Auto-calibrate Engine");
             System.out.println("  " + TerminalUtils.AMBER + "B" + TerminalUtils.RESET + "  Back");
             System.out.println();
             TerminalUtils.printPrompt(ctx.username());
@@ -44,6 +46,8 @@ public class RoutingMenu {
                 case "6" -> ctx.runWithDaoGuard("Could not start session. Database operation failed; no changes were saved.", this::startSession);
                 case "7" -> ctx.runWithDaoGuard("Could not close session. Database operation failed; no changes were saved.", this::closeSession);
                 case "8" -> ctx.runWithDaoGuard("Unable to load sessions right now. Please try again.", this::viewSessions);
+                case "9" -> ctx.runWithDaoGuard("Failed to execute decomposed plan.", this::decomposeAndExecute);
+                case "C" -> ctx.runWithDaoGuard("Calibration failed.", this::manualCalibrate);
                 case "B" -> { return; }
                 default  -> TerminalUtils.printError("Unknown option.");
             }
@@ -306,5 +310,60 @@ public class RoutingMenu {
         }
         TerminalUtils.printTable(headers, rows);
         if (sessions.size() > limit) TerminalUtils.printInfo("Showing latest " + limit + " of " + sessions.size() + " sessions.");
+    }
+
+    private void decomposeAndExecute() {
+        TerminalUtils.printSeparator("AGENTIC DECOMPOSITION & EXECUTION");
+        System.out.print("  Enter complex prompt: ");
+        String prompt = ctx.scanner().nextLine().trim();
+        if (prompt.isEmpty()) return;
+
+        TerminalUtils.spinner("Planning task decomposition...", 700);
+        com.nexus.service.TaskPlannerService planner = new com.nexus.service.TaskPlannerService();
+        List<com.nexus.service.TaskPlannerService.PlannedTask> plan = planner.plan(prompt);
+
+        System.out.println("  " + TerminalUtils.GOLD + "Decomposition Plan:" + TerminalUtils.RESET);
+        for (int i = 0; i < plan.size(); i++) {
+            System.out.printf("    %d. [%s] %s%n", i + 1, plan.get(i).type(), plan.get(i).prompt().substring(0, Math.min(40, plan.get(i).prompt().length())) + "...");
+        }
+        System.out.println();
+        System.out.print("  Execute this plan? (yes/no): ");
+        if (!"yes".equalsIgnoreCase(ctx.scanner().nextLine().trim())) return;
+
+        int step = 1;
+        for (var task : plan) {
+            TerminalUtils.printSeparator("STEP " + step + ": " + task.type());
+            LlmModel best = ctx.routingEngine().selectOptimalModelForUser(task.type(), Double.MAX_VALUE, ctx.userId());
+            if (best == null) {
+                TerminalUtils.printError("Routing failed for " + task.type());
+                continue;
+            }
+            System.out.println("  " + TerminalUtils.GRAY + "Routed to: " + TerminalUtils.RESET + best.getName() + " (" + best.getProvider() + ")");
+            
+            try {
+                var resp = ctx.llmCallService().executeCall(ctx.userId(), best, task.prompt());
+                TerminalUtils.printBox("STEP " + step + " OUTPUT", resp.content());
+                
+                // Track outcome
+                OutcomeMemory rec = new OutcomeMemory(null, ctx.userId(), best.getId(),
+                    task.type(), resp.costUsd(), (int)resp.latencyMs(), 0.9, null);
+                ctx.outcomeDao().create(rec);
+            } catch (Exception e) {
+                TerminalUtils.printError("Execution failed: " + e.getMessage());
+            }
+            step++;
+        }
+        TerminalUtils.printSuccess("Agentic plan execution completed.");
+    }
+
+    private void manualCalibrate() {
+        TerminalUtils.printSeparator("MANUAL AUTO-CALIBRATION");
+        TerminalUtils.spinner("Analyzing performance history and updating suitability weights...", 1200);
+        int updated = ctx.routingEngine().recalibrateScores(ctx.userId());
+        if (updated > 0) {
+            TerminalUtils.printSuccess("Recalibration complete. " + updated + " model suitability profiles optimized.");
+        } else {
+            TerminalUtils.printInfo("Calibration finished. All weights are currently optimal for your history.");
+        }
     }
 }

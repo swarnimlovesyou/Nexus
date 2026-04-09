@@ -208,10 +208,49 @@ public class RoutingEngine {
         double costScore = maxCost == 0 ? 1.0 :
             1.0 - (model.getCostPer1kTokens() / maxCost);
 
-        return (suitScore * W_SUITABILITY)
+    return (suitScore * W_SUITABILITY)
              + (qualScore * W_QUALITY)
              + (latScore  * W_LATENCY)
              + (costScore * W_COST);
+    }
+
+    /**
+     * Autonomous Calibration: Recalibrates base suitability scores in the DB 
+     * based on the actual quality and latency captured in OutcomeHistory.
+     * This makes the routing engine self-learning.
+     */
+    public int recalibrateScores(Integer userId) {
+        List<ModelSuitability> allSuitabilities = suitabilityDao.findAll();
+        int updateCount = 0;
+
+        for (ModelSuitability ms : allSuitabilities) {
+            List<OutcomeMemory> history = outcomeMemoryDao.findByUserAndTaskType(userId, ms.getTaskType());
+            List<OutcomeMemory> modelHistory = history.stream()
+                .filter(o -> o.getModelId().equals(ms.getModelId()))
+                .toList();
+
+            if (modelHistory.size() < 3) continue; // Need at least 3 samples to adjust
+
+            double avgQuality = modelHistory.stream().mapToDouble(OutcomeMemory::getQualityScore).average().orElse(0.5);
+            
+            // Adjust base score by moving it 10% towards the actual experienced quality.
+            double oldScore = ms.getBaseScore();
+            double newScore = oldScore + (avgQuality - oldScore) * 0.10;
+            
+            // Clamp score between 0.1 and 1.0
+            newScore = Math.max(0.1, Math.min(1.0, newScore));
+            
+            if (Math.abs(newScore - oldScore) > 0.005) {
+                ms.setBaseScore(newScore);
+                suitabilityDao.update(ms);
+                updateCount++;
+                
+                String log = String.format("Auto-calibrated model %d for %s: %.2f -> %.2f (samples=%d)", 
+                    ms.getModelId(), ms.getTaskType(), oldScore, newScore, modelHistory.size());
+                auditLogDao.create(new AuditLog(null, userId, "AUTO_CALIBRATION", log, "SUCCESS", null));
+            }
+        }
+        return updateCount;
     }
 
     /**

@@ -91,7 +91,7 @@ public class LlmCallService {
         headers.put("Authorization", "Bearer " + apiKey);
         headers.put("Content-Type", "application/json");
 
-        String body = sendJson(endpoint, payload, headers);
+        String body = sendJson(provider, endpoint, payload, headers);
         String content = extractFirst(body, "\\\"content\\\"\\s*:\\s*\\\"((?:\\\\.|[^\\\"\\\\])*)\\\"");
         int promptTokens = extractInt(body, "\\\"prompt_tokens\\\"\\s*:\\s*(\\d+)", -1);
         int completionTokens = extractInt(body, "\\\"completion_tokens\\\"\\s*:\\s*(\\d+)", -1);
@@ -115,7 +115,7 @@ public class LlmCallService {
         headers.put("anthropic-version", "2023-06-01");
         headers.put("Content-Type", "application/json");
 
-        String body = sendJson(endpoint, payload, headers);
+        String body = sendJson(Provider.ANTHROPIC, endpoint, payload, headers);
         String text = extractFirst(body, "\\\"text\\\"\\s*:\\s*\\\"((?:\\\\.|[^\\\"\\\\])*)\\\"");
         int inputTokens = extractInt(body, "\\\"input_tokens\\\"\\s*:\\s*(\\d+)", -1);
         int outputTokens = extractInt(body, "\\\"output_tokens\\\"\\s*:\\s*(\\d+)", -1);
@@ -140,7 +140,7 @@ public class LlmCallService {
         Map<String, String> headers = new HashMap<>();
         headers.put("Content-Type", "application/json");
 
-        String body = sendJson(endpoint, payload, headers);
+        String body = sendJson(Provider.GOOGLE_GEMINI, endpoint, payload, headers);
         String text = extractFirst(body, "\\\"text\\\"\\s*:\\s*\\\"((?:\\\\.|[^\\\"\\\\])*)\\\"");
         int inputTokens = extractInt(body, "\\\"promptTokenCount\\\"\\s*:\\s*(\\d+)", -1);
         int outputTokens = extractInt(body, "\\\"candidatesTokenCount\\\"\\s*:\\s*(\\d+)", -1);
@@ -151,7 +151,7 @@ public class LlmCallService {
         return new ProviderResponse(jsonUnescape(text), inputTokens, outputTokens);
     }
 
-    private String sendJson(String endpoint, String payload, Map<String, String> headers) throws Exception {
+    private String sendJson(Provider provider, String endpoint, String payload, Map<String, String> headers) throws Exception {
         HttpRequest.Builder requestBuilder = HttpRequest.newBuilder()
             .uri(URI.create(endpoint))
             .timeout(Duration.ofSeconds(45))
@@ -162,8 +162,16 @@ public class LlmCallService {
         }
 
         HttpResponse<String> response = httpClient.send(requestBuilder.build(), HttpResponse.BodyHandlers.ofString());
-        if (response.statusCode() < 200 || response.statusCode() >= 300) {
-            throw new Exception("HTTP " + response.statusCode() + ": " + trimBody(response.body()));
+        int code = response.statusCode();
+        if (code < 200 || code >= 300) {
+            String errorMsg = trimBody(response.body());
+            if (code == 429) {
+                throw new Exception("RATE_LIMIT: " + provider.getDisplayName() + " quota exceeded. Switching to fallback...");
+            }
+            if (code == 400 && errorMsg.contains("context_length")) {
+                throw new Exception("CONTEXT_LIMIT: Prompt too large for " + endpoint);
+            }
+            throw new Exception("HTTP " + code + ": " + errorMsg);
         }
         return response.body();
     }

@@ -2,8 +2,11 @@ package com.nexus.domain;
 
 public enum TaskType {
     CODE_GENERATION,
+    UNIT_TESTING,
     CREATIVE_WRITING,
     DATA_EXTRACTION,
     SUMMARIZATION,
+    REASONING,
+    GENERAL_KNOWLEDGE,
     GENERAL_CHAT
 }
