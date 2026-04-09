@@ -31,17 +31,19 @@ public class NexusApp {
     private final HistoryMenu historyMenu;
     private final AuditMenu auditMenu;
     private final AdminMenu adminMenu;
+    private final IntelligenceMenu intelligenceMenu;
 
     public NexusApp() {
-        this.ctx         = new MenuContext();
-        this.routingMenu = new RoutingMenu(ctx);
-        this.memoryMenu  = new MemoryMenu(ctx);
-        this.apiKeyMenu  = new ApiKeyMenu(ctx);
-        this.modelMenu   = new ModelMenu(ctx);
-        this.financeMenu = new FinanceMenu(ctx);
-        this.historyMenu = new HistoryMenu(ctx);
-        this.auditMenu   = new AuditMenu(ctx);
-        this.adminMenu   = new AdminMenu(ctx);
+        this.ctx              = new MenuContext();
+        this.routingMenu      = new RoutingMenu(ctx);
+        this.memoryMenu       = new MemoryMenu(ctx);
+        this.apiKeyMenu       = new ApiKeyMenu(ctx);
+        this.modelMenu        = new ModelMenu(ctx);
+        this.financeMenu      = new FinanceMenu(ctx);
+        this.historyMenu      = new HistoryMenu(ctx);
+        this.auditMenu        = new AuditMenu(ctx);
+        this.adminMenu        = new AdminMenu(ctx);
+        this.intelligenceMenu = new IntelligenceMenu(ctx);
         
         seedInitialData();
     }
@@ -152,13 +154,14 @@ public class NexusApp {
         System.out.println("  " + TerminalUtils.AMBER + "6" + TerminalUtils.RESET + "  Execution History");
         System.out.println("  " + TerminalUtils.AMBER + "7" + TerminalUtils.RESET + "  Audit Log");
         System.out.println("  " + TerminalUtils.AMBER + "8" + TerminalUtils.RESET + "  Account Settings " + TerminalUtils.GRAY + "(Change Password)" + TerminalUtils.RESET);
+        System.out.println("  " + TerminalUtils.GOLD + "I" + TerminalUtils.RESET + "  Intelligence Hub " + TerminalUtils.GRAY + "(God-Tier Features)" + TerminalUtils.RESET);
         if ("ADMIN".equals(ctx.loggedInUser().getRole())) {
             System.out.println("  " + TerminalUtils.AMBER + "9" + TerminalUtils.RESET + "  System Administration");
         }
         System.out.println("  " + TerminalUtils.AMBER + "0" + TerminalUtils.RESET + "  Logout");
         System.out.println();
         TerminalUtils.printPrompt(ctx.username());
-        switch (ctx.scanner().nextLine().trim()) {
+        switch (ctx.scanner().nextLine().trim().toUpperCase()) {
             case "1" -> routingMenu.show();
             case "2" -> memoryMenu.show();
             case "3" -> apiKeyMenu.show();
@@ -167,6 +170,7 @@ public class NexusApp {
             case "6" -> historyMenu.show();
             case "7" -> auditMenu.show();
             case "8" -> accountSettings();
+            case "I" -> intelligenceMenu.show();
             case "9" -> { if ("ADMIN".equals(ctx.loggedInUser().getRole())) adminMenu.show(); }
             case "0" -> { ctx.setLoggedInUser(null); TerminalUtils.clearScreen(); TerminalUtils.printBanner(); }
             default  -> TerminalUtils.printError("Unknown option.");
