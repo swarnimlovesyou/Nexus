@@ -40,10 +40,11 @@ export function CliReferencePage() {
                 </thead>
                 <tbody>
                   {[
-                    { flag: 'nexus start', def: 'yes', desc: 'Launches the interactive dashboard.' },
-                    { flag: 'java -jar ...', def: 'yes', desc: 'Runs Nexus directly without wrapper scripts.' },
-                    { flag: 'nexus session ...', def: 'yes', desc: 'Run session workflows directly from command mode (list/start/close).' },
-                    { flag: 'nexus finance report ...', def: 'yes', desc: 'Generate spend analytics from command mode with range filters.' },
+                   { flag: 'nexus start', def: 'yes', desc: 'Launches the full interactive dashboard with all menu modules.' },
+                    { flag: 'java -jar nexus.jar', def: 'yes', desc: 'Runs Nexus directly without wrapper scripts. Equivalent to nexus start.' },
+                    { flag: 'nexus session ...', def: 'yes', desc: 'Run session workflows from command mode (list / start / close) without entering the menu loop.' },
+                    { flag: 'nexus finance report ...', def: 'yes', desc: 'Generate spend analytics from command mode with date-range filters (e.g. --range 30d).' },
+                    { flag: 'nexus health', def: 'yes', desc: 'Ping all configured API endpoints. Reports latency and connectivity status for each provider.' },
                   ].map((row, i) => (
                     <tr key={i} style={{ borderBottom: '1px solid var(--border)' }}>
                       <td style={{ padding: '12px', color: 'var(--accent)', fontWeight: '850', fontFamily: 'var(--mono)', fontSize: '13px' }}>{row.flag}</td>
@@ -103,9 +104,15 @@ nexus finance report --user admin --range 30d`}
            
            <Terminal lines={[
              '<span style="color: var(--text-muted)">[1] Intelligent Routing Engine</span>',
-             '<span style="color: var(--text-muted)">[2] Memory Vault (Contextd)</span>',
+             '<span style="color: var(--text-muted)">[2] Memory Vault</span>',
              '<span style="color: var(--text-muted)">[3] API Key Vault</span>',
+             '<span style="color: var(--text-muted)">[4] Model Discovery</span>',
              '<span style="color: var(--text-muted)">[5] Financial Intelligence</span>',
+             '<span style="color: var(--text-muted)">[6] Execution History</span>',
+             '<span style="color: var(--text-muted)">[7] Audit Log</span>',
+             '<span style="color: var(--text-muted)">[8] Account Settings</span>',
+             '<span style="color: var(--text-muted)">[I] Intelligence Hub  (Architecture DNA · Security · Market)</span>',
+             '<span style="color: var(--text-muted)">[9] System Administration  (ADMIN only)</span>',
              '<span style="color: var(--accent)">nexus@local > Select module: </span>'
            ]} />
         </section>

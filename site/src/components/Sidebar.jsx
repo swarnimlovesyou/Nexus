@@ -1,14 +1,18 @@
-import { useState } from 'react';
+import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Terminal, Shield, BrainCircuit, Activity, BookOpen, Key, DollarSign, Download, Zap, History, X } from 'lucide-react';
+import { 
+  Terminal, Shield, BrainCircuit, Activity, BookOpen, Key, 
+  DollarSign, Download, Zap, History, X, ShieldAlert, Binary, RefreshCw 
+} from 'lucide-react';
 
 const MENU = [
   {
     title: 'GETTING STARTED',
     links: [
-      { id: 'overview',    label: 'Overview',                path: '/overview',    icon: BookOpen },
-      { id: 'install',     label: 'Installation',            path: '/install',     icon: Download },
-      { id: 'quickstart',  label: 'Quickstart',              path: '/quickstart',  icon: Zap },
+      { id: 'overview',     label: 'Overview',                path: '/overview',    icon: BookOpen },
+      { id: 'install',      label: 'Installation',            path: '/install',     icon: Download },
+      { id: 'quickstart',   label: 'Quickstart',              path: '/quickstart',  icon: Zap },
+      { id: 'architecture', label: 'Sovereign Architecture', path: '/architecture', icon: Shield },
     ]
   },
   {
@@ -18,6 +22,14 @@ const MENU = [
       { id: 'memory',    label: 'Memory Vault',         path: '/memory',     icon: BrainCircuit },
       { id: 'api-vault', label: 'API Key Vault',        path: '/api-vault',  icon: Key },
       { id: 'finance',   label: 'Financial Intelligence', path: '/finance',  icon: DollarSign },
+    ]
+  },
+  {
+    title: 'INTELLIGENCE HUB',
+    links: [
+      { id: 'security',    label: 'Security Sentinel',     path: '/security',         icon: ShieldAlert },
+      { id: 'arch-dna',    label: 'Architecture DNA',     path: '/architecture-dna', icon: Binary },
+      { id: 'market',      label: 'Market Intelligence',  path: '/market-intel',     icon: RefreshCw },
     ]
   },
   {

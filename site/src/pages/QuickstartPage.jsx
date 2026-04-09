@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion';
 import { Helmet } from 'react-helmet-async';
-import { Terminal as TerminalIcon, UserPlus, Key, Zap, ArrowRight, ShieldCheck, Database, LayoutGrid, Settings, BookOpen, Clock, Activity, Target } from 'lucide-react';
+import { Terminal as TerminalIcon, UserPlus, Key, Zap, ArrowRight, ShieldCheck, Database, Layers, Settings, BookOpen, Clock, Activity, Target, Binary, ShieldAlert } from 'lucide-react';
 import { CodeBlock, Callout } from '../components/UI';
 import { Link } from 'react-router-dom';
 
@@ -12,155 +12,148 @@ export function QuickstartPage() {
     <motion.div className="page" initial="hidden" animate="show" variants={container}>
       <Helmet>
         <title>Quickstart — Nexus Autopilot</title>
-        <meta name="description" content="Go from zero to your first routed AI interaction in under 2 minutes with Nexus." />
+        <meta name="description" content="Go from zero to your first autonomously routed and security-audited AI interaction in under 2 minutes with Nexus v2.1.0." />
       </Helmet>
 
       <motion.div variants={item}>
         <div className="badge-premium">GETTING STARTED</div>
         <h1 className="page-title">Quickstart Guide</h1>
         <p className="page-description">
-          Go from zero to your first autonomously routed prompt in under 2 minutes.
+          Follow the 4-stage pipeline to initialize your local Agentic OS and run your first intelligently routed prompt.
         </p>
 
-        {/* ── Intelligent Routing Signal ───────────────── */}
+        {/* ── Scoring Engine ─────────────────────────── */}
         <section className="doc-section">
           <div className="section-header-inline">
              <Activity size={20} color="var(--accent)" />
-             <h2>The Intelligent Routing Signal</h2>
+             <h2>Stage 0: The Scoring Heartbeat</h2>
           </div>
           <p>
-            Nexus doesn't just proxy calls; it <strong>adjudicates</strong> them. Every request is analyzed by the Composite Scoring Engine, 
-            which generates a deterministic value <code>[0.0 - 1.0]</code> for every configured provider based on suitability mappings and execution outcomes.
+            Before you start, understand that Nexus is automated. Every prompt is scored across 4 signals before dispatched to a provider.
           </p>
           
           <div className="algorithm-card">
             <div className="alg-header">
               <Settings size={14} />
-              <span>COMPOSITE SCORING ALGORITHM</span>
+              <span>COMPOSITE SCORING WEIGHTS — v2.1.0</span>
             </div>
             <div className="alg-grid">
                <div className="alg-item">
                  <Target size={14} />
                  <span className="label">Suitability</span>
-                 <span className="value">35%</span>
-                 <div className="bar"><div className="fill" style={{ width: '35%' }}></div></div>
+                 <span className="value">45%</span>
+                 <div className="bar"><div className="fill" style={{ width: '45%' }}></div></div>
                </div>
                <div className="alg-item">
                  <ShieldCheck size={14} />
                  <span className="label">Quality</span>
-                 <span className="value">30%</span>
-                 <div className="bar"><div className="fill" style={{ width: '30%' }}></div></div>
+                 <span className="value">25%</span>
+                 <div className="bar"><div className="fill" style={{ width: '25%' }}></div></div>
                </div>
                <div className="alg-item">
                  <Zap size={14} />
-                 <span className="label">Cost</span>
+                 <span className="label">Latency</span>
                  <span className="value">20%</span>
                  <div className="bar"><div className="fill" style={{ width: '20%' }}></div></div>
                </div>
                <div className="alg-item">
                  <Activity size={14} />
-                 <span className="label">Latency</span>
-                 <span className="value">15%</span>
-                 <div className="bar"><div className="fill" style={{ width: '15%' }}></div></div>
+                 <span className="label">Cost</span>
+                 <span className="value">10%</span>
+                 <div className="bar"><div className="fill" style={{ width: '10%' }}></div></div>
                </div>
             </div>
           </div>
         </section>
 
-        {/* ── Steps ───────────────────────────────────── */}
+        {/* ── Setup Steps ────────────────────────────── */}
         <div className="steps-container">
            <div className="step-box">
-             <h3>01. Initialize Nexus</h3>
-             <p>Deploy the platform core with a single command.</p>
+             <div className="step-badge">01</div>
+             <h3>Initialize Core</h3>
+             <p>Launch the platform. On first run, Nexus creates <code>nexus.db</code> and boots the local service mesh.</p>
              <CodeBlock code="nexus start" lang="bash" />
            </div>
            
            <div className="step-box">
-             <h3>02. Local Registration</h3>
-             <p>Create your local account (Option 2) so memories, sessions, keys, and outcomes are associated with your user.</p>
+             <div className="step-badge">02</div>
+             <h3>Identity and Vault</h3>
+             <p>Register a local account, then head to <strong>Option 3</strong> to store your OpenAI/Groq keys in the Zero-Trust Vault.</p>
            </div>
            
            <div className="step-box">
-             <h3>03. API Key Vault</h3>
-             <p>Navigate to <strong>Option 3</strong> and add keys for OpenAI or Groq. Keys are XOR-encoded immediately.</p>
+             <div className="step-badge">03</div>
+             <h3>DNA Indexing</h3>
+             <p>Go to the <strong>Intelligence Hub (I)</strong> and run the <strong>Architecture DNA Scan</strong>. This maps your project dependencies into memory.</p>
+           </div>
+
+           <div className="step-box">
+             <div className="step-badge">04</div>
+             <h3>Routed Dispatch</h3>
+             <p>Navigate to <strong>Option 1</strong> and enter a complex coding prompt. Nexus will plan, route, and execute autonomously.</p>
            </div>
         </div>
 
-        {/* ── Contextd ────────────────────────────────── */}
-        <section className="doc-section">
-          <div className="section-header-inline">
-             <Database size={20} color="var(--accent)" />
-             <h2>Contextd: The Memory Vault</h2>
-          </div>
-          <p>
-            A local-first SQLite memory layer for typed workflow knowledge.
-            Features <strong>auto-decay</strong> and prune operations to keep recall quality high.
-          </p>
-        </section>
+        {/* ── Core Systems ────────────────────────────── */}
+        <div className="pillars-grid" style={{ marginTop: '64px' }}>
+           <div className="pillar-card">
+             <Database size={18} />
+             <h4>Memory Vault</h4>
+             <p>FACT memories from your DNA scan are automatically injected into the routed context for better LLM grounding.</p>
+           </div>
+           <div className="pillar-card">
+             <ShieldAlert size={18} />
+             <h4>Security Sentinel</h4>
+             <p>Before executing, use the Sentinel to ensure no keys or hardcoded IPs are sitting in your active buffers.</p>
+           </div>
+           <div className="pillar-card">
+             <Clock size={18} />
+             <h4>Outcome Learning</h4>
+             <p>Close your session after completion. The routing engine recalibrates its scores based on your reported session quality.</p>
+           </div>
+        </div>
 
-        {/* ── Architectural Pillars ───────────────────── */}
+        {/* ── Navigation ──────────────────────────────── */}
         <section className="doc-section">
-          <h2>Architectural Pillars</h2>
-          <div className="pillars-grid">
-             <div className="pillar-card">
-               <ShieldCheck size={18} />
-               <h4>Auditability</h4>
-               <p>Every interaction is logged locally for security auditing without leaking IP to third parties.</p>
-             </div>
-             <div className="pillar-card">
-               <Zap size={18} />
-               <h4>Cost Optimization</h4>
-               <p>Automatically routes to cost-efficient models for simple tasks, saving frontier models for complex reasoning.</p>
-             </div>
-             <div className="pillar-card">
-               <Clock size={18} />
-               <h4>Session Context</h4>
-               <p>Use start/close session flows to track end-to-end coding runs and auto-log outcomes consistently.</p>
-             </div>
-          </div>
-        </section>
-
-        {/* ── Deep Dives ──────────────────────────────── */}
-        <section className="doc-section">
-           <h2>Logical Deep Dives</h2>
+           <h2>Detailed Intelligence Deep Dives</h2>
            <div className="deep-dive-grid">
               <Link to="/routing" className="deep-dive-link">
-                 <span>Routing Logic &rarr;</span>
-                 <p>Algorithm score matrix</p>
+                 <span>Routing Engine &rarr;</span>
+                 <p>Autonomous adjudication logic</p>
               </Link>
               <Link to="/memory" className="deep-dive-link">
-                 <span>Contextd Storage &rarr;</span>
-                 <p>Memory decay algorithm</p>
+                 <span>Memory Layer &rarr;</span>
+                 <p>Typed storage & decay pass</p>
               </Link>
-              <Link to="/api-vault" className="deep-dive-link">
-                 <span>API Key Vault &rarr;</span>
-                 <p>Encrypted local storage</p>
+              <Link to="/architecture-dna" className="deep-dive-link">
+                 <span>Architecture DNA &rarr;</span>
+                 <p>Dependency mapping internals</p>
               </Link>
-              <Link to="/cli" className="deep-dive-link">
-                 <span>CLI Reference &rarr;</span>
-                  <p>Interactive and command-mode commands</p>
+              <Link to="/security" className="deep-dive-link">
+                 <span>Security Sentinel &rarr;</span>
+                 <p>Workspace audit regex library</p>
               </Link>
            </div>
         </section>
 
         {/* ── Best Practices ──────────────────────────── */}
         <section className="doc-section">
-          <h2>Best Practices</h2>
+          <h2>Standard Operating Procedures</h2>
           <div className="best-practices-grid">
              <Callout type="info">
-               <strong>Prompt Engineering:</strong> Keep tasks concise. Nexus routes better when intent is clearly defined at the start of the prompt.
+               <strong>Rescan DNA:</strong> After big refactors, run the DNA scan again (Intelligence Hub &gt; 1) to keep the Memory Vault's map accurate.
              </Callout>
              <Callout type="warning">
-               <strong>Key Management:</strong> Keys are XOR-obfuscated for local convenience; use dedicated secret management for high-security environments.
+               <strong>Audit Weekly:</strong> Run the Security Sentinel scan before every major push to ensure zero secret leakage.
              </Callout>
           </div>
         </section>
 
-        {/* ── Next Steps ──────────────────────────────── */}
+        {/* ── Installation ────────────────────────────── */}
         <div className="next-steps-banner">
-           <h3>Next Steps</h3>
-           <p>Ready to initialize your local environment? Go from zero to your first routed prompt in under 2 minutes.</p>
-           <Link to="/install" className="btn-glow">Proceed to Installation</Link>
+           <h3>Ready to start building?</h3>
+           <p>Follow the installation guide to build the platform core from source.</p>
+           <Link to="/install" className="btn-glow">View Installation Guide</Link>
         </div>
       </motion.div>
     </motion.div>

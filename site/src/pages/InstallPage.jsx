@@ -10,20 +10,20 @@ const item = { hidden: { opacity: 0, y: 15 }, show: { opacity: 1, y: 0 }};
 export function InstallPage() {
   const installOptions = [
     { 
-      label: 'Maven Build', 
-      code: '# Build from repository root\nmvn clean package\n\n# Run jar\njava -jar target/nexus-autopilot-1.0-SNAPSHOT-jar-with-dependencies.jar' 
+      label: 'Recommended (Windows)', 
+      code: '# 1. Build project with Maven\nmvn clean package\n\n# 2. Start Nexus via the launcher script\nnexus start' 
     },
     { 
-      label: 'Windows Helper', 
-      code: '# Windows convenience wrapper\nnexus.bat start' 
+      label: 'Maven + Java Direct', 
+      code: '# 1. Build JAR with all dependencies\nmvn clean package\n\n# 2. Run the JAR directly\njava -jar target/nexus-autopilot-2.1.0-jar-with-dependencies.jar' 
     },
     { 
-      label: 'Jar Direct Run', 
-      code: 'java -jar target/nexus-autopilot-1.0-SNAPSHOT-jar-with-dependencies.jar' 
+      label: 'Linux / MacOS', 
+      code: '# 1. Build project\nmvn clean package\n\n# 2. Add as alias or run jar directly\njava -jar target/nexus-autopilot-2.1.0-jar-with-dependencies.jar' 
     },
     { 
-      label: 'NPM Local Link', 
-      code: '# Optional local CLI wrapper\nnpm link\n\n# Then run\nnexus start' 
+      label: 'Update Only', 
+      code: '# 1. Rebuild JAR from latest source\nmvn clean package\n\n# 2. Nexus automatically handles schema migrations on start' 
     }
   ];
 
@@ -31,14 +31,14 @@ export function InstallPage() {
     <motion.div className="page" initial="hidden" animate="show" variants={container}>
       <Helmet>
         <title>Installation — Nexus Autopilot</title>
-        <meta name="description" content="Set up Nexus Autopilot locally using Maven, the Windows launcher, direct jar execution, or npm link." />
+        <meta name="description" content="Set up Nexus Autopilot locally using Maven and the Windows launcher. Learn how to build the v2.1.0 Agentic OS from source." />
       </Helmet>
 
       <motion.div variants={item}>
         <div className="badge-premium">DEPLOYMENT</div>
         <h1 className="page-title">Installation Guide</h1>
         <p className="page-description">
-          Nexus is designed to be local-first and lightweight. Build once, then run via jar, launcher script, or npm-linked command.
+          Nexus is a local-first agentic operating system. Since it runs as a standalone JAR, installation is as simple as building from source and launching the script.
         </p>
 
         {/* ── Selection Tabs ────────────────────────── */}
@@ -47,59 +47,54 @@ export function InstallPage() {
         </div>
 
         {/* ── Prerequisites ─────────────────────────── */}
-        <section className="doc-section">
+        <section className="doc-section" style={{ marginTop: '64px' }}>
           <div className="section-header-inline">
              <Settings size={20} color="var(--accent)" />
              <h2>System Prerequisites</h2>
           </div>
           <p>
-            Before running Nexus, ensure your environment has the required runtime and terminal support.
+            Before running Nexus, ensure your environment has the required runtime components.
           </p>
           
           <div className="pillars-grid" style={{ marginTop: '32px' }}>
             <div className="pillar-card">
               <Cpu size={18} color="var(--accent)" />
-              <h4>Runtime Engine</h4>
-              <p>Java 17+ is required. Node.js is optional and only needed if you want the npm CLI wrapper.</p>
+              <h4>JDK 17 Runtime</h4>
+              <p>The core Nexus engine is built in Java 17. Ensure <code>java -version</code> reports 17 or higher in your terminal.</p>
             </div>
             <div className="pillar-card">
               <Database size={18} color="var(--accent)" />
-              <h4>Local Storage</h4>
-              <p>Embedded SQLite (`nexus.db`) is created automatically on first run. No external DB setup required.</p>
+              <h4>Maven Build System</h4>
+              <p>Used to resolve dependencies and package the JAR. Verify with <code>mvn -v</code> before building.</p>
             </div>
             <div className="pillar-card">
               <ShieldCheck size={18} color="var(--accent)" />
-              <h4>Terminal Access</h4>
-              <p>Use a terminal that supports ANSI output for the best CLI rendering experience.</p>
+              <h4>Workspace Permissions</h4>
+              <p>Nexus needs write access to its current directory to create <code>nexus.db</code> and index your code's Architecture DNA.</p>
             </div>
           </div>
         </section>
 
-        {/* ── Troubleshooting ───────────────────────── */}
+        {/* ── Verification ──────────────────────────── */}
         <section className="doc-section">
            <div className="section-header-inline">
               <Binary size={20} color="var(--accent)" />
               <h2>Verify Deployment</h2>
            </div>
-            <p>If the dashboard loads and prompts for login/register, installation is working.</p>
+            <p>Once the build completes and the script is launched, the Nexus splash screen will appear. If you see the version <code>v2.1.0</code>, your installation is successful.</p>
             <CodeBlock code="nexus start" lang="bash" />
         </section>
 
         {/* ── Next Steps ────────────────────────────── */}
         <div className="next-steps-banner">
-           <h3>Next Steps</h3>
+           <h3>Nexus Successfully Indexed</h3>
            <p>
-             Once installed, you're ready to initialize your local environment and configure your first model provider.
+             You've deployed the core engine. Now it's time to register your first user and configure your provider API keys.
            </p>
-           <div style={{ marginTop: '24px', display: 'flex', justifyContent: 'center' }}>
-              <Link to="/quickstart" className="btn-glow">
-                 Proceed to Quickstart <ArrowRight size={16} />
-              </Link>
-           </div>
            <div style={{ marginTop: '32px' }} className="deep-dive-grid">
               <Link to="/quickstart" className="deep-dive-link" style={{ textAlign: 'center' }}>
                  <span>Quickstart Guide &rarr;</span>
-                 <p>Go from zero to your first routed prompt in under 2 minutes.</p>
+                 <p>Go from empty vault to your first autonomous execution in under 2 minutes.</p>
               </Link>
            </div>
         </div>

@@ -16,6 +16,10 @@ import { ApiKeyVaultPage } from './pages/ApiKeyVaultPage';
 import { FinancialPage } from './pages/FinancialPage';
 import { CliReferencePage } from './pages/CliReferencePage';
 import { ChangelogPage } from './pages/ChangelogPage';
+import { SovereignDocsPage } from './pages/SovereignDocsPage';
+import { SecuritySentinelPage } from './pages/SecuritySentinelPage';
+import { ArchitectureDnaPage } from './pages/ArchitectureDnaPage';
+import { MarketIntelligencePage } from './pages/MarketIntelligencePage';
 
 function DocsLayout({ sidebarOpen, setSidebarOpen }) {
   return (
@@ -29,10 +33,14 @@ function DocsLayout({ sidebarOpen, setSidebarOpen }) {
             <Route path="overview" element={<OverviewPage />} />
             <Route path="install" element={<InstallPage />} />
             <Route path="quickstart" element={<QuickstartPage />} />
+            <Route path="architecture" element={<SovereignDocsPage />} />
             <Route path="routing" element={<RoutingEnginePage />} />
             <Route path="memory" element={<MemoryLayerPage />} />
             <Route path="api-vault" element={<ApiKeyVaultPage />} />
             <Route path="finance" element={<FinancialPage />} />
+            <Route path="security" element={<SecuritySentinelPage />} />
+            <Route path="architecture-dna" element={<ArchitectureDnaPage />} />
+            <Route path="market-intel" element={<MarketIntelligencePage />} />
             <Route path="cli" element={<CliReferencePage />} />
             <Route path="changelog" element={<ChangelogPage />} />
             <Route path="*" element={<Navigate to="overview" replace />} />

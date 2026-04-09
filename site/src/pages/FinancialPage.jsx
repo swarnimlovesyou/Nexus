@@ -1,7 +1,8 @@
 import { motion } from 'framer-motion';
 import { Helmet } from 'react-helmet-async';
-import { Wallet, BarChart3, TrendingDown, Target, ArrowRight, Activity, PieChart, TrendingUp, ShieldCheck } from 'lucide-react';
+import { Wallet, TrendingDown, Target, ArrowRight, Activity, PieChart, TrendingUp, ShieldCheck, Globe, Zap, Search } from 'lucide-react';
 import { CodeBlock, Callout } from '../components/UI';
+import { Link } from 'react-router-dom';
 
 const container = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.1 }}};
 const item = { hidden: { opacity: 0, y: 15 }, show: { opacity: 1, y: 0 }};
@@ -11,13 +12,14 @@ export function FinancialPage() {
     <motion.div className="page" initial="hidden" animate="show" variants={container}>
       <Helmet>
         <title>Financial Intel — Nexus Autopilot</title>
+        <meta name="description" content="Nexus Financial Intelligence: track spend, analyze cost savings, and sync live market prices from OpenRouter." />
       </Helmet>
 
       <motion.div variants={item}>
         <div className="badge-premium">ECONOMY ANALYTICS</div>
         <h1 className="page-title">Financial Intelligence</h1>
         <p className="page-description">
-          Analyze recorded spend, compare it with lower-cost viable routing options, and break down costs by model and task.
+          Analyze recorded spend, compare it with lower-cost viable routing options, and ground your decisions in real-time market pricing — all from your local machine.
         </p>
 
         {/* ── Cost Efficiency ─────────────────────── */}
@@ -27,7 +29,7 @@ export function FinancialPage() {
               <h2>Token Economy & Real-Time Intel</h2>
            </div>
            <p>
-             Every token has a price. Nexus provides granular visibility into your AI expenditure using the same USD values stored in execution outcomes.
+             Every token has a price. Nexus provides granular visibility into your AI expenditure by aggregating the USD costs persisted in every <code>outcome_memory</code> record. This isn't just a total; it's a diagnostic of your routing efficiency.
            </p>
 
            <div className="algorithm-card">
@@ -42,7 +44,7 @@ export function FinancialPage() {
                    <div className="bar"><div className="fill" style={{ width: '65%' }}></div></div>
                  </div>
                  <div className="alg-item">
-                   <span className="label">Optimal Savings</span>
+                   <span className="label">Potential Savings</span>
                    <span className="value">$43.81</span>
                    <div className="bar"><div className="fill" style={{ width: '85%', background: 'var(--green)' }}></div></div>
                  </div>
@@ -62,31 +64,34 @@ export function FinancialPage() {
 
         {/* ── Model Analytics ──────────────────────── */}
         <section className="doc-section">
-           <h2>Model Pricing Adjudication</h2>
-            <p>Nexus compares model usage from recorded outcomes and highlights where lower-cost options could have satisfied quality constraints.</p>
+           <div className="section-header-inline">
+              <TrendingUp size={20} color="var(--accent)" />
+              <h2>Model Pricing Adjudication</h2>
+           </div>
+            <p>Nexus compares actual model usage from recorded outcomes and highlights where "What-If" routing — choosing the cheapest viable model instead of the highest score — would have impacted your bottom line.</p>
            
            <div className="table-responsive">
-              <table className="custom-table" style={{ width: '100%', marginTop: '16px', borderCollapse: 'collapse' }}>
+              <table className="custom-table" style={{ width: '100%', marginTop: '16px' }}>
                 <thead>
-                  <tr style={{ textAlign: 'left', borderBottom: '1px solid var(--border)' }}>
-                    <th style={{ padding: '12px', fontSize: '11px', color: 'var(--text-muted)' }}>MODEL PROVIDER</th>
-                    <th style={{ padding: '12px', fontSize: '11px', color: 'var(--text-muted)' }}>CALLS</th>
-                    <th style={{ padding: '12px', fontSize: '11px', color: 'var(--text-muted)' }}>AVG. COST (1k)</th>
-                    <th style={{ padding: '12px', fontSize: '11px', color: 'var(--text-muted)' }}>SAVINGS (VS DEFAULT)</th>
+                  <tr>
+                    <th>MODEL PROVIDER</th>
+                    <th>TOTAL CALLS</th>
+                    <th>AVG. COST (1k)</th>
+                    <th>TOTAL SAVINGS</th>
                   </tr>
                 </thead>
                 <tbody>
                   {[
-                    { provider: 'OpenAI GPT-4o', calls: '241', cost: '$0.0050', savings: '$19.44' },
-                    { provider: 'Anthropic Claude-3.5', calls: '110', cost: '$0.0030', savings: '$11.28' },
-                    { provider: 'Groq Llama-3-70b', calls: '421', cost: '$0.0008', savings: '$25.60' },
-                    { provider: 'Gemini 1.5 Pro', calls: '89', cost: '$0.00125', savings: '$4.33' },
+                    { provider: 'Anthropic Claude-3.5 Sonnet', calls: '241', cost: '$0.0030', savings: '$24.44' },
+                    { provider: 'OpenAI GPT-4o', calls: '110', cost: '$0.0050', savings: '$11.28' },
+                    { provider: 'Groq Llama-3-70b', calls: '421', cost: '$0.0008', savings: '$45.60' },
+                    { provider: 'Gemini 1.5 Pro', calls: '89', cost: '$0.00125', savings: '$9.33' },
                   ].map((row, i) => (
-                    <tr key={i} style={{ borderBottom: '1px solid var(--border)' }}>
-                      <td style={{ padding: '12px', color: 'var(--text)', fontWeight: '850', fontSize: '14px' }}>{row.provider}</td>
-                      <td style={{ padding: '12px', color: 'var(--text-dim)', fontSize: '13.5px' }}>{row.calls}</td>
-                      <td style={{ padding: '12px', color: 'var(--text-dim)', fontSize: '13.5px' }}>{row.cost}</td>
-                      <td style={{ padding: '12px', color: 'var(--green)', fontWeight: '850', fontSize: '13.5px' }}>+{row.savings}</td>
+                    <tr key={i}>
+                      <td style={{ fontWeight: '850' }}>{row.provider}</td>
+                      <td>{row.calls}</td>
+                      <td>{row.cost}</td>
+                      <td style={{ color: 'var(--green)', fontWeight: '850' }}>+{row.savings}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -94,59 +99,77 @@ export function FinancialPage() {
            </div>
         </section>
 
-        {/* ── Predict Budgeting ─────────────────────── */}
+        {/* ── Market Grounding ─────────────────────── */}
+        <section className="doc-section">
+           <div className="section-header-inline">
+              <Globe size={20} color="var(--accent)" />
+              <h2>Market Intelligence Grounding</h2>
+           </div>
+           <p>
+             Cost metrics are only as good as the pricing data behind them. The <Link to="/market-intel" style={{ color: 'var(--accent)', textDecoration: 'underline' }}>Market Intelligence</Link> service keeps your local registry synced with live OpenRouter pricing, ensuring that "Savings" calculations are grounded in current market reality.
+           </p>
+           <Callout type="info">
+             <strong>Feature Link:</strong> Run the Market Reality Check from the Intelligence Hub to update your <code>llm_models</code> registry prices before generating a financial report.
+           </Callout>
+        </section>
+
+        {/* ── Analysis Logic ───────────────────────── */}
         <section className="doc-section">
            <div className="section-header-inline">
               <TrendingDown size={20} color="var(--accent)" />
               <h2>Cost Analysis Logic</h2>
            </div>
            <p>
-             Financial analysis is computed from stored execution outcomes. Nexus reports actual spend, estimated optimal spend, and avoidable spend.
+             The financial dashboard computes metrics by joining the <code>agent_sessions</code> and <code>memories</code> tables (specifically <code>outcome_memory</code> records). It calculates actual vs. optimal spend per session.
            </p>
            
            <CodeBlock 
              lang="java" 
-             code={`// Spend analysis from recorded outcomes
-double actualSpend = history.stream().mapToDouble(OutcomeMemory::getCost).sum();
-double optimalSpend = estimateOptimalSpend(history, qualityThreshold);
-double avoidableSpend = Math.max(0.0, actualSpend - optimalSpend);
+             code={`// FinanceService.java — generateReport()
+double totalActual = outcomes.stream().mapToDouble(OutcomeMemory::getCost).sum();
 
-System.out.printf("Actual: $%.6f, Optimal: $%.6f, Avoidable: $%.6f", 
-    actualSpend, optimalSpend, avoidableSpend);`}
+// Optimal spend: what we would have paid if we routed to the 
+// cheapest model that still met the QUALITY threshold of 0.8.
+double totalOptimal = outcomes.stream()
+    .mapToDouble(o -> getCheapestViablePrice(o.getTaskType(), 0.8))
+    .sum();
+
+double savingsUnrealized = totalActual - totalOptimal;
+System.out.printf("Efficiency: %.1f%% | Potential Savings: $%.2f", 
+    (totalOptimal / totalActual) * 100, savingsUnrealized);`}
            />
         </section>
 
         {/* ── Architectural Pillars ─────────────────── */}
         <section className="doc-section">
-          <h2>Cost Insights</h2>
+          <h2>Financial Pillars</h2>
           <div className="pillars-grid">
              <div className="pillar-card">
-               <ShieldCheck size={18} fill="rgba(232,116,92,0.1)" />
-               <h4>Savings Visibility</h4>
-               <p>See exactly how much spend could have been avoided given your historical task and model distribution.</p>
+               <ShieldCheck size={18} />
+               <h4>Zero Hidden Spend</h4>
+               <p>Every token generated by an agent is cost-calculated locally. No mystery bills at the end of the month.</p>
              </div>
              <div className="pillar-card">
-               <TrendingUp size={18} fill="rgba(232,116,92,0.1)" />
-               <h4>Range-Based Views</h4>
-               <p>Review lifetime, 7-day, or 30-day windows to spot current trends without losing long-term context.</p>
+               <Zap size={18} />
+               <h4>Arbitrage Discovery</h4>
+               <p>Identify which task types (e.g. SUMMARIZATION) are consistently routing to over-expensive models and adjust registry weights.</p>
              </div>
              <div className="pillar-card">
-               <LayoutGrid size={18} fill="rgba(232,116,92,0.1)" />
-               <h4>Granular Billing</h4>
-               <p>Analyze economy metrics per-user, per-model, and per-task type using local persisted outcomes.</p>
+               <Search size={18} />
+               <h4>Per-User Accounting</h4>
+               <p>Analyze spend and savings across different developers to identify high-efficiency workflows and budget waste.</p>
              </div>
           </div>
         </section>
 
         {/* ── Best Practices ──────────────────────────── */}
         <section className="doc-section">
-          <h2>Financial Constraints</h2>
           <div className="best-practices-grid">
             <Callout type="info">
-              <strong>Currency Setup:</strong> Runtime analytics use USD values persisted from outcome records.
+              <strong>Reporting Range:</strong> Generate reports for the last 24h, 7 days, or 30 days via the CLI to track immediate impact of routing changes.
             </Callout>
             <Callout type="warning">
-              <strong>Hard Limits:</strong> Set a practical monthly cap in your workflow and run the dashboard weekly to keep spend intentional.
+              <strong>Cost Ceiling:</strong> Nexus does not block calls based on budget yet. Use the dashboard to manually monitor spend against your personal threshold.
             </Callout>
           </div>
         </section>
@@ -154,7 +177,3 @@ System.out.printf("Actual: $%.6f, Optimal: $%.6f, Avoidable: $%.6f",
     </motion.div>
   );
 }
-
-const LayoutGrid = ({ size, fill }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill={fill} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
-);

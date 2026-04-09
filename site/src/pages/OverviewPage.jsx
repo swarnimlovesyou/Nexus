@@ -19,7 +19,7 @@ export function OverviewPage() {
     <motion.div className="page" initial="hidden" animate="show" variants={container}>
       <Helmet>
         <title>Overview — Nexus Autopilot</title>
-        <meta name="description" content="Nexus is a local-first Java CLI for routing, memory management, API key vaulting, session tracking, and spend analytics." />
+        <meta name="description" content="Nexus is a local-first agentic CLI for intelligent LLM routing, semantic memory, security auditing, and financial intelligence." />
       </Helmet>
 
       {/* ── Hero section ────────────────────────── */}
@@ -29,7 +29,7 @@ export function OverviewPage() {
           Deterministic Orchestration for <span className="text-glow">Stochastic Models.</span>
         </h1>
         <p className="page-description">
-          Nexus is a research-grade local-first orchestration layer that bridges the gap between raw LLM APIs and autonomous agentic workflows.
+          Nexus is a local-first agentic operating system that routes every prompt to the optimal model, tracks spend at the token level, and proactively defends your workspace — all without a cloud service.
         </p>
         <div className="hero-actions" style={{ display: 'flex', gap: '16px', marginTop: '24px' }}>
           <Link to="/install" className="btn-glow">
@@ -44,12 +44,12 @@ export function OverviewPage() {
       {/* ── System Status ────────────────────────── */}
       <motion.div variants={item} style={{ marginBottom: '64px' }}>
         <Terminal lines={[
-          '<span className="t-prompt">nexus@local $</span> <span className="t-cmd">nexus start</span>',
-          '<span style="color: var(--accent)">Nexus Engine Adjudicating suitability matrix...</span>',
-          '<span style="color: var(--green)">● Nexus Core Online (v1.2.4)</span>',
-          '<span style="color: var(--text-muted)">[System] Contextd Memory Vault: typed memory store online</span>',
-          '<span style="color: var(--accent); font-weight: 850">★ ROUTING VERDICT: Claude-3.5-Sonnet [Score: 0.982]</span>',
-          '<span style="color: var(--text-muted)">[Metadata] Latency: 1.2s. Estimated cost: $0.0042.</span>'
+          '<span class="t-prompt">nexus@local $</span> <span class="t-cmd">nexus start</span>',
+          '<span style="color: var(--accent)">Nexus v2.1.0 — Agentic OS loading...</span>',
+          '<span style="color: var(--green)">● Core Online · Memory Vault: 24 memories · Security: CLEAN</span>',
+          '<span style="color: var(--text-muted)">[Intelligence] Architecture DNA: 56 classes indexed</span>',
+          '<span style="color: var(--text-muted)">[Market] Last sync: 2026-04-09 · gpt-4o: $0.005/1k</span>',
+          '<span style="color: var(--accent); font-weight: 850">ROUTING VERDICT: claude-3-5-sonnet [Score: 0.967 · Cost: $0.0036]</span>'
         ]} />
       </motion.div>
 
@@ -60,39 +60,39 @@ export function OverviewPage() {
            <h2>The Intelligent Routing Signal</h2>
         </div>
         <p>
-          Nexus doesn't just proxy calls; it <strong>adjudicates</strong> them. Every request is analyzed by the Composite Scoring Engine, 
-          which generates a deterministic value <code>[0.0 - 1.0]</code> for every configured provider based on suitability mappings and recorded execution outcomes.
+          Nexus doesn't just proxy calls; it <strong>adjudicates</strong> them. Every request is analyzed by the Composite Scoring Engine,
+          which generates a deterministic value <code>[0.0 - 1.0]</code> for every configured provider based on suitability mappings, recorded execution outcomes, latency history, and live market costs.
         </p>
 
         <div className="algorithm-card">
           <div className="alg-header">
             <Settings size={14} />
-            <span>COMPOSITE SCORING ALGORITHM</span>
+            <span>COMPOSITE SCORING ALGORITHM — v2.1.0</span>
           </div>
           <div className="alg-grid">
              <div className="alg-item">
                <Target size={14} />
                <span className="label">Suitability</span>
-               <span className="value">35%</span>
-               <div className="bar"><div className="fill" style={{ width: '35%' }}></div></div>
+               <span className="value">45%</span>
+               <div className="bar"><div className="fill" style={{ width: '45%' }}></div></div>
              </div>
              <div className="alg-item">
                <ShieldCheck size={14} />
                <span className="label">Quality</span>
-               <span className="value">30%</span>
-               <div className="bar"><div className="fill" style={{ width: '30%' }}></div></div>
+               <span className="value">25%</span>
+               <div className="bar"><div className="fill" style={{ width: '25%' }}></div></div>
              </div>
              <div className="alg-item">
                <Zap size={14} />
-               <span className="label">Cost</span>
+               <span className="label">Latency</span>
                <span className="value">20%</span>
                <div className="bar"><div className="fill" style={{ width: '20%' }}></div></div>
              </div>
              <div className="alg-item">
                <Activity size={14} />
-               <span className="label">Latency</span>
-               <span className="value">15%</span>
-               <div className="bar"><div className="fill" style={{ width: '15%' }}></div></div>
+               <span className="label">Cost</span>
+               <span className="value">10%</span>
+               <div className="bar"><div className="fill" style={{ width: '10%' }}></div></div>
              </div>
           </div>
         </div>
@@ -104,8 +104,8 @@ export function OverviewPage() {
             <Network size={20} color="var(--accent)" />
             <h2>System Topology</h2>
          </div>
-         <p>Nexus acts as a security and performance proxy, ensuring your agents operate within a deterministic environment before stochastic LLM interaction occurs.</p>
-         
+         <p>Nexus acts as a performance and security proxy, ensuring every agent call is adjudicated, cost-tracked, and audited before and after reaching a provider.</p>
+
          <div className="topology-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 40px 1.5fr 40px 1fr', alignItems: 'center', margin: '48px 0', gap: '16px' }}>
             <div className="topo-node">
                <Cpu size={24} />
@@ -115,7 +115,7 @@ export function OverviewPage() {
             <div className="topo-node topo-nexus">
                <Layers size={24} />
                <strong>NEXUS CORE</strong>
-               <small>Adjudication Layer</small>
+               <small>Route · Audit · Learn</small>
             </div>
             <ArrowRight size={24} color="var(--border)" />
             <div className="topo-node">
@@ -133,28 +133,43 @@ export function OverviewPage() {
         </div>
         <p>
           A local-first SQLite persistence layer for typed operational memories.
-          Features <strong>auto-decay</strong> and pruning to keep context relevant over time.
+          Supports 5 memory types (FACT, PREFERENCE, EPISODE, SKILL, CONTRADICTION), each with configurable TTL, confidence scores, and automatic decay on every login.
         </p>
       </motion.div>
 
       {/* ── Architectural Pillars ─────────────────── */}
       <motion.div variants={item} className="doc-section">
         <h2>Architectural Pillars</h2>
-        <div className="pillars-grid">
+        <div className="pillars-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
            <div className="pillar-card">
              <ShieldCheck size={18} />
              <h4>Auditability</h4>
-             <p>Every prompt and response is logged locally for RAG refinement or security auditing without leaking IP.</p>
+             <p>Every action — login, memory write, key add, LLM call — is logged to an append-only SQLite audit table for full traceability.</p>
            </div>
            <div className="pillar-card">
              <Zap size={18} />
              <h4>Cost Optimization</h4>
-             <p>Automatically routes simple tasks to cost-efficient models, and complex reasoning to frontier models.</p>
+             <p>Routes simple tasks to cost-efficient models and complex reasoning to frontier models. Tracks spend at the token level per session.</p>
            </div>
            <div className="pillar-card">
              <Clock size={18} />
-             <h4>Session Context</h4>
-             <p>Track full coding sessions and close them into outcomes so routing quality learns from coherent session data.</p>
+             <h4>Session Intelligence</h4>
+             <p>Opens and closes coded agent sessions. Outcome data auto-feeds the routing recalibration engine after every close.</p>
+           </div>
+           <div className="pillar-card">
+             <Lock size={18} />
+             <h4>Security Sentinel</h4>
+             <p>Proactively scans the local workspace for leaked API keys, hardcoded IPs, and SQL injection risks before they reach version control.</p>
+           </div>
+           <div className="pillar-card">
+             <Binary size={18} />
+             <h4>Architecture DNA</h4>
+             <p>Maps every class and its dependency graph into the Memory Vault, creating a queryable architectural knowledge base of your project.</p>
+           </div>
+           <div className="pillar-card">
+             <Globe size={18} />
+             <h4>Market Grounding</h4>
+             <p>Syncs live pricing from OpenRouter so routing cost calculations always reflect current real-world token rates — never stale data.</p>
            </div>
         </div>
       </motion.div>
@@ -165,19 +180,19 @@ export function OverviewPage() {
         <div className="deep-dive-grid">
            <Link to="/routing" className="deep-dive-link">
               <span>Routing Engine &rarr;</span>
-              <p>Adjudication engine deep dive.</p>
+              <p>4-signal composite scoring and autonomous recalibration.</p>
            </Link>
            <Link to="/memory" className="deep-dive-link">
               <span>Memory Layer &rarr;</span>
-              <p>Understanding typed memory lifecycle.</p>
+              <p>Typed memory lifecycle with decay and contradiction detection.</p>
            </Link>
-           <Link to="/api-vault" className="deep-dive-link">
-              <span>API Vault &rarr;</span>
-              <p>Zero-trust secret management.</p>
+           <Link to="/architecture" className="deep-dive-link">
+              <span>Sovereign Architecture &rarr;</span>
+              <p>Full system brief — every file, table, and agentic flow documented.</p>
            </Link>
            <Link to="/cli" className="deep-dive-link">
               <span>CLI Reference &rarr;</span>
-              <p>Interactive and command-mode usage.</p>
+              <p>Interactive and headless command-mode usage.</p>
            </Link>
         </div>
       </motion.div>
