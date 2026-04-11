@@ -11,11 +11,11 @@ import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
+import com.nexus.dao.UserDao;
 import com.nexus.domain.LlmModel;
 import com.nexus.domain.Provider;
+import com.nexus.domain.User;
 import com.nexus.util.TerminalUtils;
 
 /**
@@ -92,9 +92,9 @@ public class LlmCallService {
         headers.put("Content-Type", "application/json");
 
         String body = sendJson(provider, endpoint, payload, headers);
-        String content = extractFirst(body, "\\\"content\\\"\\s*:\\s*\\\"((?:\\\\.|[^\\\"\\\\])*)\\\"");
-        int promptTokens = extractInt(body, "\\\"prompt_tokens\\\"\\s*:\\s*(\\d+)", -1);
-        int completionTokens = extractInt(body, "\\\"completion_tokens\\\"\\s*:\\s*(\\d+)", -1);
+        String content = extractFirstString(body, "content");
+        int promptTokens = extractFirstInt(body, "prompt_tokens", -1);
+        int completionTokens = extractFirstInt(body, "completion_tokens", -1);
 
         if (content == null || content.isEmpty()) {
             throw new Exception("Provider returned no assistant content.");
@@ -116,9 +116,9 @@ public class LlmCallService {
         headers.put("Content-Type", "application/json");
 
         String body = sendJson(Provider.ANTHROPIC, endpoint, payload, headers);
-        String text = extractFirst(body, "\\\"text\\\"\\s*:\\s*\\\"((?:\\\\.|[^\\\"\\\\])*)\\\"");
-        int inputTokens = extractInt(body, "\\\"input_tokens\\\"\\s*:\\s*(\\d+)", -1);
-        int outputTokens = extractInt(body, "\\\"output_tokens\\\"\\s*:\\s*(\\d+)", -1);
+        String text = extractFirstString(body, "text");
+        int inputTokens = extractFirstInt(body, "input_tokens", -1);
+        int outputTokens = extractFirstInt(body, "output_tokens", -1);
 
         if (text == null || text.isEmpty()) {
             throw new Exception("Anthropic response did not include text content.");
@@ -141,9 +141,9 @@ public class LlmCallService {
         headers.put("Content-Type", "application/json");
 
         String body = sendJson(Provider.GOOGLE_GEMINI, endpoint, payload, headers);
-        String text = extractFirst(body, "\\\"text\\\"\\s*:\\s*\\\"((?:\\\\.|[^\\\"\\\\])*)\\\"");
-        int inputTokens = extractInt(body, "\\\"promptTokenCount\\\"\\s*:\\s*(\\d+)", -1);
-        int outputTokens = extractInt(body, "\\\"candidatesTokenCount\\\"\\s*:\\s*(\\d+)", -1);
+        String text = extractFirstString(body, "text");
+        int inputTokens = extractFirstInt(body, "promptTokenCount", -1);
+        int outputTokens = extractFirstInt(body, "candidatesTokenCount", -1);
 
         if (text == null || text.isEmpty()) {
             throw new Exception("Gemini response did not include text content.");
@@ -211,18 +211,85 @@ public class LlmCallService {
             .replace("\\\\", "\\");
     }
 
-    private String extractFirst(String json, String pattern) {
-        Matcher matcher = Pattern.compile(pattern, Pattern.DOTALL).matcher(json);
-        return matcher.find() ? matcher.group(1) : null;
+    private String extractFirstString(String json, String key) {
+        if (json == null || json.isEmpty() || key == null || key.isEmpty()) {
+            return null;
+        }
+
+        String token = "\"" + key + "\"";
+        int start = 0;
+        while (true) {
+            int keyPos = json.indexOf(token, start);
+            if (keyPos < 0) return null;
+
+            int colonPos = json.indexOf(':', keyPos + token.length());
+            if (colonPos < 0) return null;
+
+            int valueStart = colonPos + 1;
+            while (valueStart < json.length() && Character.isWhitespace(json.charAt(valueStart))) {
+                valueStart++;
+            }
+
+            if (valueStart >= json.length() || json.charAt(valueStart) != '"') {
+                start = keyPos + token.length();
+                continue;
+            }
+
+            StringBuilder raw = new StringBuilder();
+            boolean escaped = false;
+            for (int i = valueStart + 1; i < json.length(); i++) {
+                char c = json.charAt(i);
+                if (escaped) {
+                    raw.append('\\').append(c);
+                    escaped = false;
+                    continue;
+                }
+                if (c == '\\') {
+                    escaped = true;
+                    continue;
+                }
+                if (c == '"') {
+                    return raw.toString();
+                }
+                raw.append(c);
+            }
+            return raw.toString();
+        }
     }
 
-    private int extractInt(String json, String pattern, int fallback) {
-        Matcher matcher = Pattern.compile(pattern).matcher(json);
-        if (!matcher.find()) return fallback;
-        try {
-            return Integer.parseInt(matcher.group(1));
-        } catch (NumberFormatException nfe) {
+    private int extractFirstInt(String json, String key, int fallback) {
+        if (json == null || json.isEmpty() || key == null || key.isEmpty()) {
             return fallback;
+        }
+
+        String token = "\"" + key + "\"";
+        int start = 0;
+        while (true) {
+            int keyPos = json.indexOf(token, start);
+            if (keyPos < 0) return fallback;
+
+            int colonPos = json.indexOf(':', keyPos + token.length());
+            if (colonPos < 0) return fallback;
+
+            int valueStart = colonPos + 1;
+            while (valueStart < json.length() && Character.isWhitespace(json.charAt(valueStart))) {
+                valueStart++;
+            }
+
+            int valueEnd = valueStart;
+            if (valueEnd < json.length() && (json.charAt(valueEnd) == '-' || Character.isDigit(json.charAt(valueEnd)))) {
+                valueEnd++;
+                while (valueEnd < json.length() && Character.isDigit(json.charAt(valueEnd))) {
+                    valueEnd++;
+                }
+                try {
+                    return Integer.parseInt(json.substring(valueStart, valueEnd));
+                } catch (NumberFormatException ignored) {
+                    return fallback;
+                }
+            }
+
+            start = keyPos + token.length();
         }
     }
 
@@ -240,18 +307,28 @@ public class LlmCallService {
 
     public HealthReport checkHealth(int userId, LlmModel model) {
         Instant start = Instant.now();
+        int effectiveUserId = userId;
+        
+        // For admin health checks (-1), look up the admin user ID
+        if (userId == -1) {
+            UserDao userDao = new UserDao();
+            Optional<User> adminOpt = userDao.findByUsername("admin");
+            if (adminOpt.isPresent()) {
+                effectiveUserId = adminOpt.get().getId();
+            } else {
+                return new HealthReport(false, 0, "No admin user found", model.getProvider());
+            }
+        }
+        
         try {
             Provider provider = Provider.fromAny(model.getProvider()).orElse(Provider.CUSTOM);
-            Optional<String> keyOpt = apiKeyService.retrieveRawKey(userId, provider);
+            Optional<String> keyOpt = apiKeyService.retrieveRawKey(effectiveUserId, provider);
             
             if (keyOpt.isEmpty()) {
                 return new HealthReport(false, 0, "No API key configured", model.getProvider());
             }
-
-            // Simple ping prompt
-            if (userId == -1) throw new Exception("Admin check requested"); // Special case for nexus health cmd
             
-            executeCall(userId, model, "Ping");
+            executeCall(effectiveUserId, model, "Ping");
             long latency = Duration.between(start, Instant.now()).toMillis();
             return new HealthReport(true, latency, "Healthy", model.getProvider());
         } catch (Exception e) {

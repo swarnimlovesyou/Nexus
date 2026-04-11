@@ -177,6 +177,20 @@ public class DbConnectionManager {
                     FOREIGN KEY(user_id) REFERENCES users(id)
                 )""");
 
+            // ── User Profile Settings ─────────────────────────────────────
+            stmt.execute("""
+                CREATE TABLE IF NOT EXISTS user_profiles (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER NOT NULL,
+                    scope TEXT NOT NULL DEFAULT 'global',
+                    profile_key TEXT NOT NULL,
+                    profile_value TEXT NOT NULL,
+                    created_at INTEGER DEFAULT (strftime('%s','now')),
+                    updated_at INTEGER DEFAULT (strftime('%s','now')),
+                    UNIQUE(user_id, scope, profile_key),
+                    FOREIGN KEY(user_id) REFERENCES users(id)
+                )""");
+
         } catch (SQLException e) {
             throw new DaoException("Failed to initialize DB.", e);
         }
@@ -195,6 +209,8 @@ public class DbConnectionManager {
             migrateColumn(stmt, "memories", "last_accessed_at");
             migrateColumn(stmt, "memories", "expires_at");
             migrateColumn(stmt, "audit_log", "created_at");
+            migrateColumn(stmt, "user_profiles", "created_at");
+            migrateColumn(stmt, "user_profiles", "updated_at");
         } catch (SQLException e) {
             throw new DaoException("Failed to migrate legacy timestamps.", e);
         }

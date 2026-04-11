@@ -95,12 +95,19 @@ public class NexusApp {
     }
 
     private void showAuthMenu() {
-        TerminalUtils.printBox("AUTHENTICATION", "1. Login to your account\n2. Register new developer\n3. Exit Nexus");
+        TerminalUtils.printSeparator("ACCESS GATE");
+        String[] headers = {"Action", "Alias", "Legacy"};
+        String[][] rows = {
+            {"Login", "login", "1"},
+            {"Register", "register", "2"},
+            {"Exit", "exit", "3"}
+        };
+        TerminalUtils.printTable(headers, rows);
         TerminalUtils.printAuthPrompt();
-        switch (ctx.scanner().nextLine().trim()) {
-            case "1" -> login();
-            case "2" -> register();
-            case "3" -> { TerminalUtils.printInfo("Goodbye."); System.exit(0); }
+        switch (ctx.scanner().nextLine().trim().toUpperCase()) {
+            case "1", "LOGIN", "L" -> login();
+            case "2", "REGISTER", "R" -> register();
+            case "3", "EXIT", "QUIT", "Q" -> { TerminalUtils.printInfo("Goodbye."); System.exit(0); }
             default  -> TerminalUtils.printError("Unknown option.");
         }
     }
@@ -146,46 +153,131 @@ public class NexusApp {
         System.out.println();
         TerminalUtils.printSeparator("DASHBOARD · " + ctx.loggedInUser().getEntityDisplayName());
         System.out.println();
-        System.out.println("  " + TerminalUtils.AMBER + "1" + TerminalUtils.RESET + "  Intelligent Routing Engine");
-        System.out.println("  " + TerminalUtils.AMBER + "2" + TerminalUtils.RESET + "  Memory Vault  " + TerminalUtils.GRAY + "(Contextd)" + TerminalUtils.RESET);
-        System.out.println("  " + TerminalUtils.AMBER + "3" + TerminalUtils.RESET + "  API Key Vault");
-        System.out.println("  " + TerminalUtils.AMBER + "4" + TerminalUtils.RESET + "  Model Discovery");
-        System.out.println("  " + TerminalUtils.AMBER + "5" + TerminalUtils.RESET + "  Financial Intelligence");
-        System.out.println("  " + TerminalUtils.AMBER + "6" + TerminalUtils.RESET + "  Execution History");
-        System.out.println("  " + TerminalUtils.AMBER + "7" + TerminalUtils.RESET + "  Audit Log");
-        System.out.println("  " + TerminalUtils.AMBER + "8" + TerminalUtils.RESET + "  Account Settings " + TerminalUtils.GRAY + "(Change Password)" + TerminalUtils.RESET);
-        System.out.println("  " + TerminalUtils.GOLD + "I" + TerminalUtils.RESET + "  Intelligence Hub " + TerminalUtils.GRAY + "(God-Tier Features)" + TerminalUtils.RESET);
+        List<String[]> commandRows = new java.util.ArrayList<>();
+        commandRows.add(new String[] {"Build", "route", "1", "Routing Studio"});
+        commandRows.add(new String[] {"Build", "memory", "2", "Memory Vault"});
+        commandRows.add(new String[] {"Build", "keys", "3", "API Key Vault"});
+        commandRows.add(new String[] {"Build", "models", "4", "Model Discovery"});
+        commandRows.add(new String[] {"Operate", "finance", "5", "Financial Intelligence"});
+        commandRows.add(new String[] {"Operate", "history", "6", "Execution History"});
+        commandRows.add(new String[] {"Operate", "audit", "7", "Audit Log"});
+        commandRows.add(new String[] {"Operate", "profile", "8", "Account + Profile"});
+        commandRows.add(new String[] {"Advanced", "intel", "I", "Intelligence Hub"});
         if ("ADMIN".equals(ctx.loggedInUser().getRole())) {
-            System.out.println("  " + TerminalUtils.AMBER + "9" + TerminalUtils.RESET + "  System Administration");
+            commandRows.add(new String[] {"Advanced", "admin", "9", "System Administration"});
         }
-        System.out.println("  " + TerminalUtils.AMBER + "0" + TerminalUtils.RESET + "  Logout");
+        commandRows.add(new String[] {"System", "logout", "0", "Sign out"});
+
+        TerminalUtils.printTable(
+            new String[] {"Zone", "Alias", "Legacy", "Destination"},
+            commandRows.toArray(String[][]::new)
+        );
+        TerminalUtils.printSeparator("QUICK FLOW");
+        System.out.println("  Command mode fast path: nexus onboard --user " + ctx.username() + " --mode balanced --provider GROQ");
+        System.out.println("  Suggested flow: route -> memory -> profile -> onboard");
         System.out.println();
+        TerminalUtils.printInfo("Use aliases (route, memory, profile...) or legacy keys (1..9, I, 0).");
         TerminalUtils.printPrompt(ctx.username());
-        switch (ctx.scanner().nextLine().trim().toUpperCase()) {
-            case "1" -> routingMenu.show();
-            case "2" -> memoryMenu.show();
-            case "3" -> apiKeyMenu.show();
-            case "4" -> modelMenu.show();
-            case "5" -> financeMenu.show();
-            case "6" -> historyMenu.show();
-            case "7" -> auditMenu.show();
-            case "8" -> accountSettings();
-            case "I" -> intelligenceMenu.show();
-            case "9" -> { if ("ADMIN".equals(ctx.loggedInUser().getRole())) adminMenu.show(); }
-            case "0" -> { ctx.setLoggedInUser(null); TerminalUtils.clearScreen(); TerminalUtils.printBanner(); }
+        String input = ctx.scanner().nextLine().trim().toUpperCase();
+        switch (input) {
+            case "1", "ROUTE", "ROUTING", "R" -> routingMenu.show();
+            case "2", "MEMORY", "MEM", "M" -> memoryMenu.show();
+            case "3", "KEYS", "KEY", "API", "K" -> apiKeyMenu.show();
+            case "4", "MODELS", "MODEL", "MOD", "D" -> modelMenu.show();
+            case "5", "FINANCE", "COST", "F" -> financeMenu.show();
+            case "6", "HISTORY", "EXEC", "H" -> historyMenu.show();
+            case "7", "AUDIT", "A" -> auditMenu.show();
+            case "8", "PROFILE", "ACCOUNT", "P" -> accountSettings();
+            case "I", "INTEL", "INTELLIGENCE" -> intelligenceMenu.show();
+            case "9", "ADMIN" -> { if ("ADMIN".equals(ctx.loggedInUser().getRole())) adminMenu.show(); }
+            case "0", "LOGOUT", "EXIT", "Q" -> { ctx.setLoggedInUser(null); TerminalUtils.clearScreen(); TerminalUtils.printBanner(); }
             default  -> TerminalUtils.printError("Unknown option.");
         }
     }
 
     private void accountSettings() {
-        // Phase 3.3: Self-service password change
-        TerminalUtils.printSeparator("ACCOUNT SETTINGS");
-        String current = readPassword("  Current Password: ");
-        
+        while (true) {
+            TerminalUtils.printSeparator("ACCOUNT SETTINGS");
+            String[] headers = {"Action", "Alias", "Legacy", "Purpose"};
+            String[][] rows = {
+                {"Change Password", "password", "1", "Update account credential"},
+                {"Profile Quick Setup", "quick", "2", "Apply safe/balanced/power-user"},
+                {"Set Profile Setting", "set", "3", "Store a custom key/value"},
+                {"View Profile Settings", "list", "4", "Inspect effective profile state"},
+                {"Delete Profile Setting", "delete", "5", "Remove a key from scope"},
+                {"Back", "back", "B", "Return to dashboard"}
+            };
+            TerminalUtils.printTable(headers, rows);
+            System.out.println();
+            TerminalUtils.printPrompt(ctx.username());
+
+            String choice = ctx.scanner().nextLine().trim().toUpperCase();
+            switch (choice) {
+                case "1", "PASSWORD", "PASS" -> changePassword();
+                case "2", "QUICK", "SETUP" -> profileQuickSetup();
+                case "3", "SET" -> upsertProfileSetting();
+                case "4", "LIST", "VIEW" -> listProfileSettings();
+                case "5", "DELETE", "DEL" -> deleteProfileSetting();
+                case "B", "BACK" -> { return; }
+                default -> TerminalUtils.printError("Unknown option.");
+            }
+        }
+    }
+
+    private void profileQuickSetup() {
         try {
-            // Verify current password via authenticate (will throw if bad)
+            String scope = askProfileScope();
+            TerminalUtils.printSeparator("PROFILE QUICK SETUP");
+            System.out.println("  Mode: 1=Safe  2=Balanced  3=Power-user");
+            System.out.print("  Mode #: ");
+            int mode = ctx.safeInt(ctx.scanner().nextLine());
+
+            String selected = switch (mode) {
+                case 1 -> "safe";
+                case 3 -> "power-user";
+                default -> "balanced";
+            };
+
+            switch (selected) {
+                case "safe" -> {
+                    ctx.profileService().setSetting(ctx.userId(), scope, "policy.allow_file_write", "false");
+                    ctx.profileService().setSetting(ctx.userId(), scope, "policy.allow_recipe_run", "false");
+                    ctx.profileService().setSetting(ctx.userId(), scope, "policy.allow_tool_shell", "false");
+                    ctx.profileService().setSetting(ctx.userId(), scope, "context.max_injection_tokens", "700");
+                    ctx.profileService().setSetting(ctx.userId(), scope, "context.max_memories", "4");
+                }
+                case "power-user" -> {
+                    ctx.profileService().setSetting(ctx.userId(), scope, "policy.allow_file_write", "true");
+                    ctx.profileService().setSetting(ctx.userId(), scope, "policy.allow_recipe_run", "true");
+                    ctx.profileService().setSetting(ctx.userId(), scope, "policy.allow_tool_shell", "true");
+                    ctx.profileService().setSetting(ctx.userId(), scope, "context.max_injection_tokens", "1200");
+                    ctx.profileService().setSetting(ctx.userId(), scope, "context.max_memories", "8");
+                }
+                default -> {
+                    ctx.profileService().setSetting(ctx.userId(), scope, "policy.allow_file_write", "true");
+                    ctx.profileService().setSetting(ctx.userId(), scope, "policy.allow_recipe_run", "true");
+                    ctx.profileService().setSetting(ctx.userId(), scope, "policy.allow_tool_shell", "false");
+                    ctx.profileService().setSetting(ctx.userId(), scope, "context.max_injection_tokens", "900");
+                    ctx.profileService().setSetting(ctx.userId(), scope, "context.max_memories", "6");
+                }
+            }
+
+            ctx.profileService().setSetting(ctx.userId(), scope, "intent.require_confirmation_on_drift", "true");
+            ctx.profileService().setSetting(ctx.userId(), scope, "intent.min_alignment_percent", "12");
+
+            TerminalUtils.printSuccess("Profile quick setup applied: " + selected + " (scope=" + scope + ")");
+        } catch (DaoException e) {
+            TerminalUtils.printError("Could not apply quick setup due to a database issue.");
+        } catch (NexusException e) {
+            TerminalUtils.printError(e.getMessage());
+        }
+    }
+
+    private void changePassword() {
+        String current = readPassword("  Current Password: ");
+        try {
             ctx.userService().authenticate(ctx.username(), current);
-            
+
             String np = readPassword("  New Password: ");
             if (np.isEmpty()) {
                 TerminalUtils.printInfo("Password change cancelled.");
@@ -198,6 +290,78 @@ public class NexusApp {
         } catch (NexusException e) {
             TerminalUtils.printError("Authentication failed: " + e.getMessage());
         }
+    }
+
+    private void upsertProfileSetting() {
+        try {
+            String scope = askProfileScope();
+            System.out.print("  Key (e.g. code_style, response_tone): ");
+            String key = ctx.scanner().nextLine();
+            System.out.print("  Value: ");
+            String value = ctx.scanner().nextLine();
+
+            ctx.profileService().setSetting(ctx.userId(), scope, key, value);
+            TerminalUtils.printSuccess("Profile setting saved in scope: " + scope);
+        } catch (DaoException e) {
+            TerminalUtils.printError("Could not save profile setting due to a database issue.");
+        } catch (NexusException e) {
+            TerminalUtils.printError(e.getMessage());
+        }
+    }
+
+    private void listProfileSettings() {
+        try {
+            String scope = askProfileScope();
+            var merged = ctx.profileService().listSettings(ctx.userId(), scope, true);
+            if (merged.isEmpty()) {
+                TerminalUtils.printInfo("No profile settings found for scope: " + scope);
+                return;
+            }
+            TerminalUtils.printSeparator("PROFILE SETTINGS · " + scope);
+            String[] headers = {"Section", "Key", "Value"};
+            String[][] rows = new String[merged.size()][3];
+            int i = 0;
+            for (var entry : merged.entrySet()) {
+                String key = entry.getKey();
+                String section = key.startsWith("policy.") ? "policy"
+                    : key.startsWith("context.") ? "context"
+                    : key.startsWith("intent.") ? "intent"
+                    : key.startsWith("routing.") ? "routing"
+                    : key.startsWith("memory.") ? "memory"
+                    : "general";
+                rows[i++] = new String[] {section, key, entry.getValue()};
+            }
+            TerminalUtils.printTable(headers, rows);
+        } catch (DaoException e) {
+            TerminalUtils.printError("Could not load profile settings due to a database issue.");
+        }
+    }
+
+    private void deleteProfileSetting() {
+        try {
+            String scope = askProfileScope();
+            System.out.print("  Key to delete: ");
+            String key = ctx.scanner().nextLine();
+            boolean deleted = ctx.profileService().deleteSetting(ctx.userId(), scope, key);
+            if (deleted) TerminalUtils.printSuccess("Profile setting deleted.");
+            else TerminalUtils.printInfo("No setting found for that key in scope.");
+        } catch (DaoException e) {
+            TerminalUtils.printError("Could not delete profile setting due to a database issue.");
+        }
+    }
+
+    private String askProfileScope() {
+        String project = ctx.profileService().currentWorkspaceScope();
+        System.out.println("  Scope: 1=Project  2=Global  3=Custom");
+        System.out.print("  Scope #: ");
+        int choice = ctx.safeInt(ctx.scanner().nextLine());
+        if (choice == 2) return com.nexus.service.ProfileService.GLOBAL_SCOPE;
+        if (choice == 3) {
+            System.out.print("  Custom scope label/path: ");
+            String custom = ctx.scanner().nextLine().trim();
+            return custom.isEmpty() ? project : custom;
+        }
+        return project;
     }
 
     private String readPassword(String prompt) {

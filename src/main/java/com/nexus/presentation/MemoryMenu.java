@@ -51,6 +51,7 @@ public class MemoryMenu {
 
     private void storeMemory() {
         TerminalUtils.printSeparator("STORE MEMORY");
+        String scope = askScope();
         System.out.print("  Content: "); String content = ctx.scanner().nextLine();
         System.out.print("  Tags (comma-separated): "); String tags = ctx.scanner().nextLine();
         System.out.println("  Type: 1=FACT  2=PREFERENCE  3=EPISODE  4=SKILL");
@@ -60,22 +61,31 @@ public class MemoryMenu {
         if (tidx < 0 || tidx >= types.length) { TerminalUtils.printError("Invalid type."); return; }
         MemoryType type = types[tidx];
 
+        System.out.print("  Pin for long-term retention? (yes/no): ");
+        boolean pinned = "yes".equalsIgnoreCase(ctx.scanner().nextLine().trim());
+
+        int ttlDays = type.getDefaultTtlDays();
+
         TerminalUtils.spinner("Encoding and persisting memory...", 500);
-        Memory mem = ctx.memoryService().store(ctx.userId(), content, tags, type);
+        Memory mem = com.nexus.service.MemoryService.GLOBAL_SCOPE.equals(scope)
+            ? ctx.memoryService().storeGlobal(ctx.userId(), content, tags, type, ttlDays, pinned)
+            : ctx.memoryService().storeScoped(ctx.userId(), scope, content, tags, type, ttlDays, pinned);
 
         if (mem.getType() == MemoryType.CONTRADICTION) {
             TerminalUtils.printWarn("Contradiction detected with existing FACT. Stored as CONTRADICTION type.");
         } else {
             TerminalUtils.printSuccess("Memory stored. ID: " + mem.getId() + "  TTL: " + mem.getType().getDefaultTtlDays() + " days");
+            TerminalUtils.printInfo("Scope: " + scope + " | Pinned: " + (pinned ? "yes" : "no"));
         }
     }
 
     private void recallMemories() {
         TerminalUtils.printSeparator("RECALL MEMORIES");
+        String scope = askScope();
         System.out.print("  Search query: "); String query = ctx.scanner().nextLine();
         TerminalUtils.spinner("Executing hybrid retrieval...", 600);
 
-        List<Memory> results = ctx.memoryService().recall(ctx.userId(), query);
+        List<Memory> results = ctx.memoryService().recallForScope(ctx.userId(), scope, query);
         if (results.isEmpty()) { TerminalUtils.printInfo("No memories matched."); return; }
 
         System.out.println();
@@ -94,11 +104,29 @@ public class MemoryMenu {
         }
         TerminalUtils.printTable(headers, rows);
         if (results.size() > 10) TerminalUtils.printInfo("Showing top 10 of " + results.size() + " results.");
+        TerminalUtils.printInfo("Recall scope: " + scope);
     }
 
     private void viewVault() {
         TerminalUtils.printSeparator("FULL MEMORY VAULT");
-        List<Memory> all = ctx.memoryService().getAllMemories(ctx.userId());
+        System.out.println("  1. Current project scope");
+        System.out.println("  2. Global scope");
+        System.out.println("  3. All scopes");
+        System.out.print("  View #: ");
+        int mode = ctx.safeInt(ctx.scanner().nextLine());
+
+        List<Memory> all;
+        String scopeLabel;
+        if (mode == 1) {
+            scopeLabel = ctx.memoryService().currentWorkspaceScope();
+            all = ctx.memoryService().getByScope(ctx.userId(), scopeLabel);
+        } else if (mode == 2) {
+            scopeLabel = com.nexus.service.MemoryService.GLOBAL_SCOPE;
+            all = ctx.memoryService().getByScope(ctx.userId(), scopeLabel);
+        } else {
+            scopeLabel = "all";
+            all = ctx.memoryService().getAllMemories(ctx.userId());
+        }
         if (all.isEmpty()) { TerminalUtils.printInfo("Vault is empty. Use 'Store memory' to add entries."); return; }
 
         System.out.println();
@@ -115,6 +143,7 @@ public class MemoryMenu {
         }
         System.out.println();
         TerminalUtils.printInfo("Total memories: " + all.size());
+        TerminalUtils.printInfo("Scope: " + scopeLabel);
     }
 
     private void forgetMemory() {
@@ -237,5 +266,19 @@ public class MemoryMenu {
         } catch (Exception e) {
             TerminalUtils.printError("Export failed: " + e.getMessage());
         }
+    }
+
+    private String askScope() {
+        String current = ctx.memoryService().currentWorkspaceScope();
+        System.out.println("  Scope: 1=Current Project  2=Global  3=Custom");
+        System.out.print("  Scope #: ");
+        int choice = ctx.safeInt(ctx.scanner().nextLine());
+        if (choice == 2) return com.nexus.service.MemoryService.GLOBAL_SCOPE;
+        if (choice == 3) {
+            System.out.print("  Custom scope label/path: ");
+            String custom = ctx.scanner().nextLine().trim();
+            return custom.isEmpty() ? current : custom.toLowerCase();
+        }
+        return current;
     }
 }

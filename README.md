@@ -118,6 +118,129 @@ nexus session close --user admin --id 12 --input 1400 --output 620 --quality 0.9
 
 # analyze spend for last 30 days
 nexus finance report --user admin --range 30d
+
+# store long-term project memory (pinned)
+nexus memory store --user admin --scope project --content "Use repository pattern for DAOs" --type SKILL --pin
+
+# store global user profile memory (shared across projects)
+nexus memory store --user admin --scope global --content "Prefers concise CLI responses" --type PREFERENCE --ttl 3650 --pin
+
+# recall memory from current project scope + global profile fallback
+nexus memory recall --user admin --scope project --query "dao pattern"
+
+# persist profile instructions used during LLM calls
+nexus profile set --user admin --scope global --key response_tone --value "Concise, technical, no fluff"
+nexus profile set --user admin --scope project --key code_style --value "Prefer small pure methods and clear variable names"
+
+# inspect or delete profile settings
+nexus profile list --user admin --scope project
+nexus profile delete --user admin --scope project --key code_style
+
+# generate code directly into file
+nexus codegen run --user admin --task CODE_GENERATION --prompt "Create a Java DAO for project settings" --output src/main/java/com/nexus/dao/ProjectSettingsDao.java
+
+# strict CLI-first codegen mode (prevents prose/fenced markdown writes)
+nexus codegen run --user admin --task CODE_GENERATION --prompt "Create ConfigService class" --output src/main/java/com/nexus/service/ConfigService.java --strict-code true --format java
+
+# strict-code is ON by default (disable only if explicitly needed)
+nexus codegen run --user admin --task CODE_GENERATION --prompt "Generate quick prototype" --output target/tmp-prototype.txt --strict-code false --format markdown
+
+# pin workspace intent and require confirmation if output drifts
+nexus codegen run --user admin --task CODE_GENERATION --prompt "Build React landing page" --output site/src/pages/LandingPage.jsx --pin-intent true --format react-jsx
+nexus codegen run --user admin --task CODE_GENERATION --prompt "Generate Rust backend handler" --output src/main/rust/handler.rs --confirm-intent true --format rust
+
+# run a reusable multi-step automation recipe
+nexus recipe run --user admin --file recipes/example.recipe
+
+# validate recipes before execution
+nexus recipe validate --user admin --file recipes/example.recipe
+
+# optional policy controls (defaults allow)
+nexus profile set --user admin --scope global --key policy.allow_file_write --value true
+nexus profile set --user admin --scope global --key policy.allow_recipe_run --value true
+nexus profile set --user admin --scope global --key policy.allow_external_write --value false
+
+# context budget guardrails for memory/profile injection
+nexus profile set --user admin --scope project --key context.max_injection_tokens --value 900
+nexus profile set --user admin --scope project --key context.max_memories --value 6
+
+# intent drift controls
+nexus profile set --user admin --scope project --key intent.require_confirmation_on_drift --value true
+nexus profile set --user admin --scope project --key intent.min_alignment_percent --value 12
+
+# apply policy presets for CLI operating mode
+nexus profile preset --user admin --name safe --scope project
+nexus profile preset --user admin --name balanced --scope project
+nexus profile preset --user admin --name power-user --scope project
+
+# guided profile UX
+nexus profile wizard --user admin --scope project --mode balanced
+nexus profile doctor --user admin --scope project
+
+# one-command onboarding (wizard + doctor + provider check + smoke + readiness score)
+nexus onboard --user admin --scope project --mode balanced --provider GROQ
+
+# one-command onboarding with provider key bootstrap from env
+nexus onboard --user admin --scope project --mode balanced --provider GROQ --from-env true
+
+# export onboarding report artifacts (JSON + badge markdown under target/onboard)
+nexus onboard --user admin --scope project --mode balanced --provider GROQ
+
+# trust envelope for any planned command
+nexus trust evaluate --user admin --command "codegen run --output src/main/java/com/nexus/Foo.java"
+
+# replay timeline with traceability of actions/outcomes
+nexus storyboard show --user admin --limit 25
+
+# workflow macros (ship/hotfix/release-notes)
+nexus workflow list --user admin
+nexus workflow run --user admin --name ship --provider GROQ
+
+# smart command suggestions from history + profile policy
+nexus suggest --user admin --prefix code
+
+# policy-aware PR prep with risk and suggested tests
+nexus pr prep --user admin --output target/pr/prep.md
+
+# memory timeline with why-used trace hints
+nexus memory timeline --user admin --query "architecture" --limit 20
+
+# curated recipe marketplace
+nexus recipe marketplace --user admin --action list
+nexus recipe marketplace --user admin --action install --name backend-rust
+
+# list and run built-in tools (MCP-style adapters)
+nexus tool list --user admin
+nexus tool run --user admin --name fs.read --path README.md --maxchars 1500
+nexus tool run --user admin --name shell.exec --command "git status --short" --timeoutseconds 10
+
+# provider readiness checks (key + live health)
+nexus provider list --user admin
+nexus provider setup --user admin --provider GROQ --from-env true
+nexus provider check --user admin --provider GROQ
+
+# dry-run command policy before executing for real
+nexus policy simulate --user admin --command "codegen run --output src/main/java/com/nexus/Foo.java"
+
+# one-command end-to-end CLI smoke test (provider + call + codegen + tool + recipe)
+nexus smoke run --user admin --provider GROQ
+
+# interactive dashboard now supports section-style command words (route, memory, keys, models, finance, history, audit, profile, intel)
+
+# smoke report artifacts are saved to target/smoke/*.json and *.md for CI/history tracking
+
+# command-prefix compatibility (both forms are valid)
+nexus onboard --user admin --provider GROQ
+nexus command onboard --user admin --provider GROQ
+
+# tool policies
+nexus profile set --user admin --scope global --key policy.allow_tool_fs_read --value true
+nexus profile set --user admin --scope global --key policy.allow_tool_fs_write --value true
+nexus profile set --user admin --scope global --key policy.allow_tool_shell --value false
+
+# fallback tuning for real provider execution
+nexus profile set --user admin --scope global --key policy.enable_provider_fallback --value true
+nexus profile set --user admin --scope global --key routing.max_fallback_candidates --value 4
 ```
 
 If `--password` is not passed, Nexus prompts securely in terminal when supported.

@@ -103,3 +103,17 @@ CREATE TABLE IF NOT EXISTS audit_log (
     created_at INTEGER DEFAULT (strftime('%s','now')),
     FOREIGN KEY(user_id) REFERENCES users(id)
 );
+
+-- ── User Profile Settings ───────────────────────────────────────────────────
+-- Persistent behavior/settings layer that survives across sessions and projects.
+CREATE TABLE IF NOT EXISTS user_profiles (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    scope TEXT NOT NULL DEFAULT 'global', -- global | project path | custom label
+    profile_key TEXT NOT NULL,
+    profile_value TEXT NOT NULL,
+    created_at INTEGER DEFAULT (strftime('%s','now')),
+    updated_at INTEGER DEFAULT (strftime('%s','now')),
+    UNIQUE(user_id, scope, profile_key),
+    FOREIGN KEY(user_id) REFERENCES users(id)
+);

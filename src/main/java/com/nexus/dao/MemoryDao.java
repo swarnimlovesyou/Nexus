@@ -113,6 +113,21 @@ public class MemoryDao implements GenericDao<Memory> {
         return list;
     }
 
+    public List<Memory> findByUserIdAndAgentId(int userId, String agentId) {
+        List<Memory> list = new ArrayList<>();
+        try (PreparedStatement pstmt = connection.prepareStatement(
+                "SELECT * FROM memories WHERE user_id=? AND agent_id=? ORDER BY confidence DESC")) {
+            pstmt.setInt(1, userId);
+            pstmt.setString(2, agentId);
+            try (ResultSet rs = pstmt.executeQuery()) {
+                while (rs.next()) list.add(map(rs));
+            }
+        } catch (SQLException e) {
+            throw new DaoException("Failed to fetch memories by user and scope.", e);
+        }
+        return list;
+    }
+
     public List<Memory> searchContent(int userId, String query) {
         List<Memory> list = new ArrayList<>();
         try (PreparedStatement pstmt = connection.prepareStatement(
@@ -122,6 +137,24 @@ public class MemoryDao implements GenericDao<Memory> {
             try (ResultSet rs = pstmt.executeQuery()) { while (rs.next()) list.add(map(rs)); }
         } catch (SQLException e) {
             throw new DaoException("Failed to search memories.", e);
+        }
+        return list;
+    }
+
+    public List<Memory> searchContentByAgent(int userId, String agentId, String query) {
+        List<Memory> list = new ArrayList<>();
+        try (PreparedStatement pstmt = connection.prepareStatement(
+                "SELECT * FROM memories WHERE user_id=? AND agent_id=? AND (content LIKE ? OR tags LIKE ?) ORDER BY confidence DESC")) {
+            String like = "%" + query + "%";
+            pstmt.setInt(1, userId);
+            pstmt.setString(2, agentId);
+            pstmt.setString(3, like);
+            pstmt.setString(4, like);
+            try (ResultSet rs = pstmt.executeQuery()) {
+                while (rs.next()) list.add(map(rs));
+            }
+        } catch (SQLException e) {
+            throw new DaoException("Failed to search scoped memories.", e);
         }
         return list;
     }

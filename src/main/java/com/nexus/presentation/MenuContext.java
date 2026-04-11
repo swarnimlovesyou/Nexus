@@ -13,6 +13,7 @@ import com.nexus.exception.NexusException;
 import com.nexus.service.ApiKeyService;
 import com.nexus.service.LlmCallService;
 import com.nexus.service.MemoryService;
+import com.nexus.service.ProfileService;
 import com.nexus.service.RoutingEngine;
 import com.nexus.service.SessionService;
 import com.nexus.service.UserService;
@@ -35,6 +36,7 @@ public class MenuContext {
     private final AuditLogDao auditLogDao;
     private final LlmCallService llmCallService;
     private final SessionService sessionService;
+    private final ProfileService profileService;
     private User loggedInUser;
 
     public MenuContext() {
@@ -49,6 +51,7 @@ public class MenuContext {
         this.auditLogDao    = new AuditLogDao();
         this.llmCallService = new LlmCallService(apiKeyService);
         this.sessionService = new SessionService();
+        this.profileService = new ProfileService();
     }
 
     // ── Accessors ────────────────────────────────────────────────────
@@ -63,6 +66,7 @@ public class MenuContext {
     public AuditLogDao auditLogDao()   { return auditLogDao; }
     public LlmCallService llmCallService() { return llmCallService; }
     public SessionService sessionService() { return sessionService; }
+    public ProfileService profileService() { return profileService; }
 
     public User loggedInUser()         { return loggedInUser; }
     public void setLoggedInUser(User u){ this.loggedInUser = u; }

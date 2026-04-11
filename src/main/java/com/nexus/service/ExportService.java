@@ -23,7 +23,7 @@ public class ExportService {
         
         try (BufferedWriter writer = new BufferedWriter(new FileWriter(filepath))) {
             // Write CSV Header
-            writer.write("ID,Type,Confidence,TTL_Days,Created_At,Tags,Content\n");
+            writer.write("ID,Scope,Type,Pinned,Confidence,TTL_Days,Created_At,Tags,Content\n");
             
             DateTimeFormatter formatter = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
             
@@ -31,10 +31,14 @@ public class ExportService {
                 // Escape quotes in content
                 String safeContent = m.getContent().replace("\"", "\"\"");
                 String safeTags = m.getTags() != null ? m.getTags().replace("\"", "\"\"") : "";
+                String scope = m.getAgentId() != null ? m.getAgentId() : "global";
+                boolean pinned = m.getTags() != null && m.getTags().toLowerCase().contains("pinned:true");
                 
-                String line = String.format("%d,%s,%.4f,%d,%s,\"%s\",\"%s\"\n",
+                String line = String.format("%d,%s,%s,%s,%.4f,%d,%s,\"%s\",\"%s\"\n",
                     m.getId(),
+                    scope,
                     m.getType().name(),
+                    pinned ? "yes" : "no",
                     m.getConfidence(),
                     m.daysUntilExpiry() == Long.MAX_VALUE ? 9999 : m.daysUntilExpiry(),
                     m.getCreatedAt().format(formatter),

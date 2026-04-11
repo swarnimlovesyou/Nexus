@@ -1,0 +1,13 @@
+# Nexus Recipe DSL
+# PROFILE|scope|key|value
+# MEMORY|scope|type|ttl|pin|tags|content
+# CALL|task|prompt
+# CODEGEN|task|output|overwrite|prompt
+# TOOL|tool-name|k=v;k2=v2
+
+PROFILE|global|response_tone|Concise, technical, and direct
+PROFILE|project|code_style|Prefer small single-purpose methods
+MEMORY|project|SKILL|365|true|architecture,services|Use service layer validation before DAO writes
+CALL|GENERAL_CHAT|Summarize what was configured in this recipe in 3 bullets
+CODEGEN|CODE_GENERATION|src/main/java/com/nexus/service/GeneratedHealthService.java|false|Create a GeneratedHealthService class with method public String status() returning "ok".
+TOOL|fs.read|path=README.md;maxchars=300
