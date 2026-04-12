@@ -77,7 +77,7 @@ public class NexusCommandRunner {
         this.outcomeDao = new OutcomeMemoryDao();
         this.auditLogDao = new AuditLogDao();
         this.apiKeyService = new ApiKeyService();
-        this.llmCallService = new LlmCallService(apiKeyService);
+        this.llmCallService = new LlmCallService(apiKeyService, modelDao);
         this.profileService = new ProfileService();
         this.toolExecutionService = new ToolExecutionService();
         this.scanner = scanner;
@@ -139,6 +139,10 @@ public class NexusCommandRunner {
                 }
                 case "call" -> {
                     handleCall(Arrays.copyOfRange(args, 1, args.length));
+                    yield true;
+                }
+                case "chat" -> {
+                    handleChat(Arrays.copyOfRange(args, 1, args.length));
                     yield true;
                 }
                 case "memory" -> {
@@ -522,6 +526,7 @@ public class NexusCommandRunner {
             {"Profile", "nexus profile wizard --user <username>", "Guided setup for safe/balanced/power-user"},
             {"Access", "nexus provider setup --user <username> --provider GROQ --from-env true", "Securely import provider key then run health check"},
             {"Memory", "nexus memory recall --user <username> --query \"...\"", "Find scoped + global memories"},
+            {"Chat", "nexus chat --user <username> [--continue|--parent-chat <id|latest>]", "Pinned-model chat loop with parent continuation + auto-summary"},
             {"Generation", "nexus codegen run --user <username> --prompt \"...\" --output <file>", "Generate files with strict-code on by default"},
             {"Policies", "nexus policy simulate --user <username> --command \"...\"", "Preview allow/deny before execution"},
             {"Reliability", "nexus onboard --user <username> --provider GROQ --mode balanced", "Run wizard + doctor + provider + smoke with readiness score"},
@@ -547,6 +552,537 @@ public class NexusCommandRunner {
             default -> printCallHelp();
         }
     }
+
+    private void handleChat(String[] args) {
+        Map<String, String> flags = parseFlags(args);
+        User user = authenticate(flags);
+
+        TaskType task = resolveChatTask(flags);
+        LlmModel model = resolveChatModel(user, task, flags);
+        ParentChatContext parentContext = resolveParentChatContext(user, flags);
+
+        TerminalUtils.printSeparator("CHAT LOOP");
+        TerminalUtils.printInfo("Trace ID: " + activeTraceId);
+        TerminalUtils.printInfo("Task: " + task.name());
+        TerminalUtils.printInfo("Pinned model: " + model.getName() + " (" + model.getProvider() + ")");
+        if (parentContext != null) {
+            TerminalUtils.printInfo("Parent chat: " + parentContext.chatId() + " (" + parentContext.task() + ", " + parentContext.model() + ")");
+        }
+        TerminalUtils.printInfo("Commands: /exit to end and save summary + memories | /reset to clear local context");
+        System.out.println();
+
+        String chatId = activeTraceId;
+        List<String> transcript = new ArrayList<>();
+
+        while (true) {
+            System.out.print("You> ");
+            String line;
+            try {
+                line = scanner.nextLine();
+            } catch (Exception e) {
+                break;
+            }
+            if (line == null) break;
+            String userMsg = line.trim();
+            if (userMsg.isEmpty()) continue;
+
+            if ("/exit".equalsIgnoreCase(userMsg) || "/quit".equalsIgnoreCase(userMsg)) {
+                break;
+            }
+            if ("/reset".equalsIgnoreCase(userMsg)) {
+                transcript.clear();
+                TerminalUtils.printInfo("Chat context cleared (nothing was saved).");
+                continue;
+            }
+
+            transcript.add("User: " + userMsg);
+
+            String assembledPrompt = assembleChatPrompt(task, transcript, userMsg, parentContext);
+            TerminalUtils.spinner("Calling LLM...", 300);
+            try {
+                ExecutionContextResult execution = executeContextAwareCall(user, model, assembledPrompt);
+                String assistant = execution.result().content();
+                transcript.add("Assistant: " + assistant);
+                System.out.println();
+                TerminalUtils.printBox("ASSISTANT", assistant);
+                System.out.println();
+            } catch (Exception e) {
+                TerminalUtils.printError("Chat call failed: " + e.getMessage());
+            }
+        }
+
+        autoSummarizeAndStoreChat(user, task, model, chatId, transcript, parentContext == null ? null : parentContext.chatId());
+    }
+
+    private ParentChatContext resolveParentChatContext(User user, Map<String, String> flags) {
+        String scope = profileService.currentWorkspaceScope();
+        List<ParentChatSession> sessions = loadParentChatSessions(user.getId(), scope);
+
+        String parentFlag = flags.get("--parent-chat");
+        if (parentFlag != null && !parentFlag.isBlank()) {
+            ParentChatSession selected = selectParentSessionByToken(sessions, parentFlag.trim());
+            if (selected == null) {
+                throw new IllegalArgumentException("Parent chat not found: " + parentFlag);
+            }
+            return buildParentChatContext(selected);
+        }
+
+        boolean wantsContinue = parseBooleanFlag(flags, "--continue", false);
+        if (!wantsContinue) {
+            return null;
+        }
+        if (sessions.isEmpty()) {
+            TerminalUtils.printInfo("No prior chat summaries found in this scope. Starting fresh.");
+            return null;
+        }
+
+        ParentChatSession selected = promptParentChatSelection(sessions);
+        return selected == null ? null : buildParentChatContext(selected);
+    }
+
+    private List<ParentChatSession> loadParentChatSessions(int userId, String scope) {
+        com.nexus.service.MemoryService memoryService = new com.nexus.service.MemoryService();
+        List<Memory> scoped = memoryService.getByScope(userId, scope);
+
+        Map<String, List<Memory>> byChatId = new LinkedHashMap<>();
+        for (Memory m : scoped) {
+            String source = tagValue(m.getTags(), "source");
+            String chatId = tagValue(m.getTags(), "chat_id");
+            if (!"chat".equalsIgnoreCase(source) || chatId.isBlank()) continue;
+            byChatId.computeIfAbsent(chatId, k -> new ArrayList<>()).add(m);
+        }
+
+        List<ParentChatSession> sessions = new ArrayList<>();
+        for (Map.Entry<String, List<Memory>> entry : byChatId.entrySet()) {
+            List<Memory> related = entry.getValue().stream()
+                .sorted(this::compareMemoriesNewestFirst)
+                .toList();
+            if (related.isEmpty()) continue;
+
+            Memory summary = related.stream()
+                .filter(m -> m.getType() == MemoryType.EPISODE)
+                .findFirst()
+                .orElse(related.get(0));
+
+            String tags = summary.getTags();
+            sessions.add(new ParentChatSession(
+                entry.getKey(),
+                tagValue(tags, "task"),
+                tagValue(tags, "provider"),
+                tagValue(tags, "model"),
+                summary,
+                related
+            ));
+        }
+
+        sessions.sort((a, b) -> compareMemoriesNewestFirst(a.summary(), b.summary()));
+        return sessions;
+    }
+
+    private ParentChatSession selectParentSessionByToken(List<ParentChatSession> sessions, String token) {
+        if (sessions == null || sessions.isEmpty()) return null;
+        if (token == null || token.isBlank()) return null;
+
+        if ("latest".equalsIgnoreCase(token)) {
+            return sessions.get(0);
+        }
+
+        try {
+            int idx = Integer.parseInt(token.trim());
+            if (idx >= 1 && idx <= sessions.size()) {
+                return sessions.get(idx - 1);
+            }
+        } catch (NumberFormatException ignored) {
+            // not an index
+        }
+
+        String normalized = token.trim().toLowerCase(Locale.ROOT);
+        for (ParentChatSession session : sessions) {
+            if (session.chatId().toLowerCase(Locale.ROOT).equals(normalized)) {
+                return session;
+            }
+        }
+        return null;
+    }
+
+    private ParentChatSession promptParentChatSelection(List<ParentChatSession> sessions) {
+        TerminalUtils.printSeparator("PARENT CHAT");
+        int limit = Math.min(8, sessions.size());
+        String[] headers = {"#", "Chat ID", "Task", "Model", "When", "Summary"};
+        String[][] rows = new String[limit][6];
+        DateTimeFormatter fmt = DateTimeFormatter.ofPattern("MM-dd HH:mm");
+
+        for (int i = 0; i < limit; i++) {
+            ParentChatSession s = sessions.get(i);
+            Memory summary = s.summary();
+            String when = summary != null && summary.getCreatedAt() != null
+                ? summary.getCreatedAt().format(fmt)
+                : "-";
+            rows[i] = new String[] {
+                String.valueOf(i + 1),
+                s.chatId(),
+                s.task().isBlank() ? "-" : s.task(),
+                s.model().isBlank() ? "-" : s.model(),
+                when,
+                summary == null ? "-" : truncate(summary.getContent(), 70)
+            };
+        }
+
+        TerminalUtils.printTable(headers, rows);
+        if (sessions.size() > limit) {
+            TerminalUtils.printInfo("Showing latest " + limit + " chats. Use --parent-chat latest to auto-pick newest.");
+        }
+
+        String pick = readLine("Parent chat (# / chat_id, Enter=fresh): ").trim();
+        if (pick.isBlank()) {
+            TerminalUtils.printInfo("Starting fresh chat (no parent selected).");
+            return null;
+        }
+
+        ParentChatSession selected = selectParentSessionByToken(sessions, pick);
+        if (selected == null) {
+            TerminalUtils.printWarn("Parent chat not found: " + pick + ". Starting fresh.");
+            return null;
+        }
+        return selected;
+    }
+
+    private ParentChatContext buildParentChatContext(ParentChatSession session) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("Parent chat ID: ").append(session.chatId()).append("\n");
+        sb.append("Use this as compressed historical context (summary + extracted memories), not a verbatim transcript.\n");
+
+        Memory summary = session.summary();
+        if (summary != null) {
+            sb.append("Parent summary:\n").append(truncate(summary.getContent(), 1400)).append("\n");
+        }
+
+        int added = 0;
+        StringBuilder extracted = new StringBuilder();
+        for (Memory m : session.related()) {
+            if (summary != null && java.util.Objects.equals(m.getId(), summary.getId())) continue;
+            if (m.getType() == MemoryType.EPISODE) continue;
+            if (m.getType() == MemoryType.CONTRADICTION) continue;
+
+            extracted
+                .append("- [")
+                .append(m.getType().name())
+                .append("] ")
+                .append(truncate(m.getContent(), 180))
+                .append("\n");
+            added++;
+            if (added >= 8) break;
+        }
+
+        if (added > 0) {
+            sb.append("Durable extracted memories:\n").append(extracted);
+        }
+
+        return new ParentChatContext(
+            session.chatId(),
+            session.task().isBlank() ? "UNKNOWN" : session.task(),
+            session.model().isBlank() ? "UNKNOWN" : session.model(),
+            truncate(sb.toString().trim(), 2200)
+        );
+    }
+
+    private String tagValue(String tags, String key) {
+        if (tags == null || tags.isBlank() || key == null || key.isBlank()) return "";
+        String wanted = key.trim().toLowerCase(Locale.ROOT);
+        for (String raw : tags.split(",")) {
+            String token = raw.trim();
+            if (token.isEmpty()) continue;
+            int idx = token.indexOf(':');
+            if (idx <= 0) continue;
+            String k = token.substring(0, idx).trim().toLowerCase(Locale.ROOT);
+            if (!k.equals(wanted)) continue;
+            return token.substring(idx + 1).trim();
+        }
+        return "";
+    }
+
+    private int compareMemoriesNewestFirst(Memory left, Memory right) {
+        if (left == null && right == null) return 0;
+        if (left == null) return 1;
+        if (right == null) return -1;
+
+        LocalDateTime l = left.getCreatedAt();
+        LocalDateTime r = right.getCreatedAt();
+        if (l == null && r == null) {
+            return Integer.compare(right.getId() == null ? 0 : right.getId(), left.getId() == null ? 0 : left.getId());
+        }
+        if (l == null) return 1;
+        if (r == null) return -1;
+
+        int byTime = r.compareTo(l);
+        if (byTime != 0) return byTime;
+        return Integer.compare(right.getId() == null ? 0 : right.getId(), left.getId() == null ? 0 : left.getId());
+    }
+
+    private TaskType resolveChatTask(Map<String, String> flags) {
+        String taskRaw = flags.get("--task");
+        if (taskRaw != null && !taskRaw.isBlank()) {
+            return parseTask(taskRaw);
+        }
+
+        TerminalUtils.printSeparator("CHAT TASK");
+        System.out.println("  1  CODE_GENERATION");
+        System.out.println("  2  UNIT_TESTING");
+        System.out.println("  3  CREATIVE_WRITING");
+        System.out.println("  4  DATA_EXTRACTION");
+        System.out.println("  5  SUMMARIZATION");
+        System.out.println("  6  REASONING");
+        System.out.println("  7  GENERAL_KNOWLEDGE");
+        System.out.println("  8  GENERAL_CHAT");
+        System.out.print("  Task (1-8): ");
+        String choice = scanner.nextLine().trim();
+        return switch (choice) {
+            case "1" -> TaskType.CODE_GENERATION;
+            case "2" -> TaskType.UNIT_TESTING;
+            case "3" -> TaskType.CREATIVE_WRITING;
+            case "4" -> TaskType.DATA_EXTRACTION;
+            case "5" -> TaskType.SUMMARIZATION;
+            case "6" -> TaskType.REASONING;
+            case "7" -> TaskType.GENERAL_KNOWLEDGE;
+            case "8" -> TaskType.GENERAL_CHAT;
+            default -> TaskType.GENERAL_CHAT;
+        };
+    }
+
+    private LlmModel resolveChatModel(User user, TaskType task, Map<String, String> flags) {
+        // If user explicitly pins a model, use it.
+        String overrideModel = flags.get("--model");
+        if (overrideModel != null && !overrideModel.isBlank()) {
+            LlmModel pinned = modelDao.findAll().stream()
+                .filter(m -> m.getName() != null && m.getName().equalsIgnoreCase(overrideModel.trim()))
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("Model not found: " + overrideModel));
+
+            String overrideProvider = flags.get("--provider");
+            if (overrideProvider != null && !overrideProvider.isBlank()) {
+                Provider provider = Provider.fromAny(overrideProvider.trim())
+                    .orElseThrow(() -> new IllegalArgumentException("Unknown provider: " + overrideProvider));
+                Provider modelProvider = Provider.fromAny(pinned.getProvider())
+                    .orElseThrow(() -> new IllegalArgumentException("Unsupported provider string: " + pinned.getProvider()));
+                if (provider != modelProvider) {
+                    throw new IllegalArgumentException("Pinned model provider mismatch. Model '" + pinned.getName() + "' is " + modelProvider.getDisplayName());
+                }
+            }
+            return pinned;
+        }
+
+        // Otherwise route from task; if --provider is set, prefer the top candidate from that provider.
+        String overrideProvider = flags.get("--provider");
+        Provider providerOverride = null;
+        if (overrideProvider != null && !overrideProvider.isBlank()) {
+            providerOverride = Provider.fromAny(overrideProvider.trim())
+                .orElseThrow(() -> new IllegalArgumentException("Unknown provider: " + overrideProvider));
+        }
+
+        if (providerOverride != null) {
+            for (var breakdown : routingEngine.explainRoutingForUser(task, user.getId())) {
+                LlmModel candidate = breakdown.model();
+                if (candidate == null) continue;
+                if (!breakdown.hasApiKey()) continue;
+                Provider candProvider = Provider.fromAny(candidate.getProvider()).orElse(null);
+                if (candProvider == providerOverride) {
+                    return candidate;
+                }
+            }
+        }
+
+        LlmModel routed = routingEngine.selectOptimalModelForUser(task, Double.MAX_VALUE, user.getId());
+        if (routed == null) {
+            throw new IllegalArgumentException("No routable model found for task: " + task);
+        }
+        return routed;
+    }
+
+    private String assembleChatPrompt(TaskType task, List<String> transcript, String userMsg, ParentChatContext parentContext) {
+        int maxTurns = 14; // in-memory only
+        int maxCharsPerTurn = 1200;
+        int start = Math.max(0, transcript.size() - (maxTurns * 2));
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("You are Nexus Chat. Task mode: ").append(task.name()).append(".\n");
+        sb.append("Follow the user's intent for this task mode. Be concise and correct.\n");
+        sb.append("Do not include secrets or API keys.\n\n");
+        if (parentContext != null && parentContext.promptContext() != null && !parentContext.promptContext().isBlank()) {
+            sb.append("Parent context from previous chat summary (no raw transcript):\n");
+            sb.append(parentContext.promptContext()).append("\n\n");
+        }
+        sb.append("Conversation (most recent only):\n");
+
+        for (int i = start; i < transcript.size(); i++) {
+            String turn = transcript.get(i);
+            if (turn == null) continue;
+            sb.append(truncate(turn, maxCharsPerTurn)).append("\n");
+        }
+
+        sb.append("\nRespond to the latest user message.\n");
+        return sb.toString();
+    }
+
+    private void autoSummarizeAndStoreChat(User user, TaskType task, LlmModel model, String chatId, List<String> transcript, String parentChatId) {
+        TerminalUtils.printSeparator("CHAT SUMMARY");
+
+        if (transcript == null || transcript.isEmpty()) {
+            TerminalUtils.printInfo("No chat content to summarize.");
+            return;
+        }
+
+        String scope = profileService.currentWorkspaceScope();
+        String tagsBase = "source:chat,chat_id:" + chatId + ",task:" + task.name() + ",provider:" + safeTag(model.getProvider()) + ",model:" + safeTag(model.getName());
+        if (parentChatId != null && !parentChatId.isBlank()) {
+            tagsBase += ",parent_chat:" + safeTag(parentChatId);
+        }
+
+        String summaryPrompt = buildChatSummaryPrompt(task, model, transcript);
+        String summaryRaw;
+
+        try {
+            TerminalUtils.spinner("Summarizing chat...", 400);
+            ExecutionContextResult execution = executeContextAwareCall(user, model, summaryPrompt);
+            summaryRaw = execution.result().content();
+        } catch (Exception e) {
+            // Best-effort fallback: local summary (no persistence of transcript).
+            summaryRaw = "SUMMARY:\n" + localFallbackSummary(task, model, transcript)
+                + "\n\nMEMORIES:\n";
+        }
+
+        ParsedChatSummary parsed = parseChatSummary(summaryRaw);
+        com.nexus.service.MemoryService memoryService = new com.nexus.service.MemoryService();
+
+        int stored = 0;
+        try {
+            memoryService.storeScoped(user.getId(), scope, parsed.summary(), tagsBase, MemoryType.EPISODE, MemoryType.EPISODE.getDefaultTtlDays(), false);
+            stored++;
+        } catch (Exception e) {
+            TerminalUtils.printWarn("Failed to store chat summary: " + e.getMessage());
+        }
+
+        int extracted = 0;
+        for (ParsedMemoryLine line : parsed.memories()) {
+            try {
+                memoryService.storeScoped(user.getId(), scope, line.content(), mergeTags(tagsBase, line.tags()), line.type(), line.type().getDefaultTtlDays(), false);
+                extracted++;
+            } catch (Exception ignored) {
+                // Best-effort
+            }
+        }
+
+        TerminalUtils.printSuccess("Saved chat: summary=" + (stored > 0 ? "yes" : "no") + ", extracted memories=" + extracted + " (scope=" + scope + ")");
+        TerminalUtils.printInfo("Note: full transcript is not stored (summary + extracted memories only).");
+    }
+
+    private String buildChatSummaryPrompt(TaskType task, LlmModel model, List<String> transcript) {
+        int maxLines = 80;
+        int start = Math.max(0, transcript.size() - maxLines);
+        StringBuilder convo = new StringBuilder();
+        for (int i = start; i < transcript.size(); i++) {
+            convo.append(truncate(transcript.get(i), 900)).append("\n");
+        }
+
+        return "You are summarizing a terminal chat session.\n"
+            + "Task mode: " + task.name() + "\n"
+            + "Provider/model used: " + model.getProvider() + " / " + model.getName() + "\n\n"
+            + "Conversation:\n" + convo
+            + "\nOutput EXACTLY in this format:\n"
+            + "SUMMARY:\n"
+            + "<2-6 bullet points of what was decided/done, with any key constraints>\n\n"
+            + "MEMORIES:\n"
+            + "- FACT | tags=... | content=...\n"
+            + "- PREFERENCE | tags=... | content=...\n"
+            + "- SKILL | tags=... | content=...\n"
+            + "(Include 0-8 memory lines max. Only durable, non-sensitive info. No secrets/keys.)";
+    }
+
+    private ParsedChatSummary parseChatSummary(String raw) {
+        if (raw == null) {
+            return new ParsedChatSummary("(empty)", List.of());
+        }
+        String text = raw.replace("\r", "");
+        int s = indexOfIgnoreCase(text, "SUMMARY:");
+        int m = indexOfIgnoreCase(text, "MEMORIES:");
+
+        String summary;
+        if (s >= 0) {
+            int summaryStart = s + "SUMMARY:".length();
+            int summaryEnd = m >= 0 ? m : text.length();
+            summary = text.substring(summaryStart, Math.min(summaryEnd, text.length())).trim();
+        } else {
+            summary = truncate(text.trim(), 1200);
+        }
+        if (summary.isBlank()) summary = "(no summary)";
+
+        List<ParsedMemoryLine> memories = new ArrayList<>();
+        if (m >= 0) {
+            String memBlock = text.substring(m + "MEMORIES:".length()).trim();
+            for (String line : memBlock.split("\n")) {
+                String l = line.trim();
+                if (!l.startsWith("-")) continue;
+                ParsedMemoryLine parsed = parseMemoryLine(l.substring(1).trim());
+                if (parsed != null) memories.add(parsed);
+                if (memories.size() >= 8) break;
+            }
+        }
+
+        return new ParsedChatSummary(summary, memories);
+    }
+
+    private ParsedMemoryLine parseMemoryLine(String line) {
+        // Expected: TYPE | tags=... | content=...
+        if (line == null || line.isBlank()) return null;
+        String[] parts = line.split("\\|", 3);
+        if (parts.length < 3) return null;
+        String typeRaw = parts[0].trim().toUpperCase(Locale.ROOT);
+        MemoryType type;
+        try {
+            type = MemoryType.valueOf(typeRaw);
+        } catch (Exception e) {
+            return null;
+        }
+        String tagsPart = parts[1].trim();
+        String contentPart = parts[2].trim();
+        String tags = tagsPart.toLowerCase(Locale.ROOT).startsWith("tags=") ? tagsPart.substring(5).trim() : "";
+        String content = contentPart.toLowerCase(Locale.ROOT).startsWith("content=") ? contentPart.substring(8).trim() : contentPart;
+        if (content.isBlank()) return null;
+        return new ParsedMemoryLine(type, tags, content);
+    }
+
+    private int indexOfIgnoreCase(String haystack, String needle) {
+        if (haystack == null || needle == null) return -1;
+        return haystack.toLowerCase(Locale.ROOT).indexOf(needle.toLowerCase(Locale.ROOT));
+    }
+
+    private String mergeTags(String baseTags, String extraTags) {
+        if (extraTags == null || extraTags.isBlank()) return baseTags;
+        if (baseTags == null || baseTags.isBlank()) return extraTags;
+        return baseTags + "," + extraTags;
+    }
+
+    private String safeTag(String raw) {
+        if (raw == null) return "unknown";
+        return raw.trim().replace(" ", "_");
+    }
+
+    private String localFallbackSummary(TaskType task, LlmModel model, List<String> transcript) {
+        int lines = Math.min(12, transcript.size());
+        StringBuilder sb = new StringBuilder();
+        sb.append("- Task: ").append(task.name()).append("\n");
+        sb.append("- Model: ").append(model.getName()).append(" (").append(model.getProvider()).append(")\n");
+        sb.append("- Turns: ").append(transcript.size() / 2).append("\n");
+        sb.append("- Last messages:\n");
+        for (int i = Math.max(0, transcript.size() - lines); i < transcript.size(); i++) {
+            sb.append("  ").append(truncate(transcript.get(i), 140)).append("\n");
+        }
+        return sb.toString().trim();
+    }
+
+    private record ParsedChatSummary(String summary, List<ParsedMemoryLine> memories) {}
+    private record ParsedMemoryLine(MemoryType type, String tags, String content) {}
+    private record ParentChatSession(String chatId, String task, String provider, String model, Memory summary, List<Memory> related) {}
+    private record ParentChatContext(String chatId, String task, String model, String promptContext) {}
 
     private void callRun(User user, Map<String, String> flags) {
         String taskRaw = require(flags, "--task", "Missing --task (e.g. CODE_GENERATION)");
@@ -1062,6 +1598,16 @@ public class NexusCommandRunner {
             return;
         }
 
+        // Display newest first (chat summaries/memories are appended over time).
+        memories = memories.stream()
+            .sorted((a, b) -> {
+                if (a.getCreatedAt() == null && b.getCreatedAt() == null) return 0;
+                if (a.getCreatedAt() == null) return 1;
+                if (b.getCreatedAt() == null) return -1;
+                return b.getCreatedAt().compareTo(a.getCreatedAt());
+            })
+            .toList();
+
         String[] headers = {"ID", "Type", "Confidence", "Scope", "Tags", "Content"};
         String[][] rows = new String[Math.min(10, memories.size())][6];
         for (int i = 0; i < rows.length; i++) {
@@ -1076,7 +1622,7 @@ public class NexusCommandRunner {
             };
         }
         TerminalUtils.printTable(headers, rows);
-        TerminalUtils.printInfo(all ? "Showing all scopes" : "Scope: " + scope);
+        TerminalUtils.printInfo((all ? "Showing all scopes" : "Scope: " + scope) + " | Showing newest " + rows.length + " of " + memories.size());
     }
 
     private void memoryTimeline(User user, Map<String, String> flags) {

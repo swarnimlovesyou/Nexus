@@ -49,7 +49,7 @@ public class MenuContext {
         this.suitabilityDao = new SuitabilityDao();
         this.outcomeDao     = new OutcomeMemoryDao();
         this.auditLogDao    = new AuditLogDao();
-        this.llmCallService = new LlmCallService(apiKeyService);
+        this.llmCallService = new LlmCallService(apiKeyService, modelDao);
         this.sessionService = new SessionService();
         this.profileService = new ProfileService();
     }

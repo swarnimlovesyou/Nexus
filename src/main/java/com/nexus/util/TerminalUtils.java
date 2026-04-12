@@ -1,6 +1,8 @@
 package com.nexus.util;
 
 import java.nio.charset.Charset;
+import java.util.ArrayList;
+import java.util.List;
 
 public class TerminalUtils {
     // ANSI Colors
@@ -140,18 +142,24 @@ public class TerminalUtils {
     public static void printBox(String title, String content) {
         String safeTitle = title == null ? "" : title;
         String safeContent = content == null ? "" : content;
-        String[] lines = safeContent.split("\\n", -1);
+        String[] rawLines = safeContent.split("\\n", -1);
 
         int width = Math.max(40, safeTitle.length() + 4);
-        for (String line : lines) {
+        for (String line : rawLines) {
             width = Math.max(width, stripAnsi(line).length() + 2);
         }
 
+        // Prevent extremely wide boxes that overflow the terminal and break borders.
+        width = Math.min(width, 100);
+
         String top = CH_TL + CH_H + " " + safeTitle + " " + repeat(CH_H, Math.max(0, width - safeTitle.length() - 4)) + CH_TR;
         System.out.println(AMBER + top + RESET);
-        for (String line : lines) {
-            int visible = stripAnsi(line).length();
-            System.out.println(AMBER + CH_V + RESET + line + repeat(" ", Math.max(0, width - visible)) + AMBER + CH_V + RESET);
+
+        for (String raw : rawLines) {
+            for (String line : wrapLine(stripAnsi(raw), width)) {
+                int visible = stripAnsi(line).length();
+                System.out.println(AMBER + CH_V + RESET + line + repeat(" ", Math.max(0, width - visible)) + AMBER + CH_V + RESET);
+            }
         }
         System.out.println(AMBER + CH_BL + repeat(CH_H, width) + CH_BR + RESET);
     }
@@ -168,6 +176,13 @@ public class TerminalUtils {
             for (int i = 0; i < cols && i < row.length; i++) {
                 widths[i] = Math.max(widths[i], stripAnsi(row[i]).length());
             }
+        }
+
+        // Keep tables readable in typical terminals by capping column widths.
+        // This prevents long blobs (e.g., tags/paths) from forcing massive tables.
+        int maxColWidth = 34;
+        for (int i = 0; i < cols; i++) {
+            widths[i] = Math.min(widths[i], maxColWidth);
         }
 
         System.out.println(AMBER + buildBorder(CH_TL, CH_T, CH_TR, widths) + RESET);
@@ -190,6 +205,7 @@ public class TerminalUtils {
             rowLine.append(AMBER).append(CH_V).append(RESET);
             for (int i = 0; i < cols; i++) {
                 String cell = i < row.length ? row[i] : "";
+                cell = truncateToWidth(cell, widths[i]);
                 int cellLen = stripAnsi(cell).length();
                 rowLine
                     .append(" ")
@@ -202,6 +218,39 @@ public class TerminalUtils {
         }
 
         System.out.println(AMBER + buildBorder(CH_BL, CH_B, CH_BR, widths) + RESET);
+    }
+
+    private static List<String> wrapLine(String line, int width) {
+        if (line == null) return List.of("");
+        String s = line;
+        if (s.isEmpty()) return List.of("");
+        int max = Math.max(10, width);
+        List<String> out = new ArrayList<>();
+        while (stripAnsi(s).length() > max) {
+            int cut = Math.min(max, s.length());
+            int space = s.lastIndexOf(' ', cut);
+            if (space <= 0) space = cut;
+            String part = s.substring(0, space).trim();
+            if (part.isEmpty()) {
+                part = s.substring(0, cut);
+                space = cut;
+            }
+            out.add(part);
+            s = s.substring(Math.min(space + 1, s.length())).trim();
+            if (s.isEmpty()) break;
+        }
+        if (!s.isEmpty()) out.add(s);
+        if (out.isEmpty()) out.add("");
+        return out;
+    }
+
+    private static String truncateToWidth(String cell, int width) {
+        if (cell == null) return "";
+        String plain = stripAnsi(cell);
+        if (plain.length() <= width) return cell;
+        if (width <= 1) return plain.substring(0, Math.min(1, plain.length()));
+        if (width <= 3) return plain.substring(0, width);
+        return plain.substring(0, Math.max(0, width - 3)) + "...";
     }
 
     private static String buildBorder(String left, String join, String right, int[] widths) {
@@ -309,6 +358,10 @@ public class TerminalUtils {
     }
 
     private static boolean supportsUnicode() {
+        // When output is redirected or no interactive console is attached,
+        // Unicode box-drawing and symbols frequently render as '?' on Windows.
+        if (System.console() == null) return false;
+
         String encoding = Charset.defaultCharset().name().toUpperCase();
         if (encoding.contains("UTF")) return true;
 

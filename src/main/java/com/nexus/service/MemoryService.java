@@ -9,6 +9,7 @@ import com.nexus.exception.ValidationException;
 
 import java.time.Clock;
 import java.time.LocalDateTime;
+import java.util.Locale;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -82,7 +83,15 @@ public class MemoryService {
         // Contradiction detection: check if a FACT with same tag already exists
         if (type == MemoryType.FACT && tags != null && !tags.trim().isEmpty()) {
             for (String tag : tags.split(",")) {
-                List<Memory> existing = memoryDao.searchContentByAgent(userId, normalizedScope, tag.trim());
+                String t = tag.trim();
+                if (t.isEmpty()) continue;
+                // Opt-in only: generic grouping tags (e.g., ARCH_MAP, source:chat, task:...) should not
+                // trigger contradiction detection because they collide frequently.
+                String tLower = t.toLowerCase(Locale.ROOT);
+                boolean isKeyTag = tLower.startsWith("key:") || tLower.startsWith("factkey:");
+                if (!isKeyTag) continue;
+
+                List<Memory> existing = memoryDao.searchContentByAgent(userId, normalizedScope, t);
                 for (Memory m : existing) {
                     if (m.getType() == MemoryType.FACT && !m.getContent().equalsIgnoreCase(content)) {
                         type = MemoryType.CONTRADICTION;

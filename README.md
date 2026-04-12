@@ -106,6 +106,18 @@ nexus start
 ### Command Mode (Non-Interactive)
 You can run session and finance workflows directly from the terminal:
 
+### Nexus Chat Quick Guide
+1. Start fresh: nexus chat --user admin
+2. Pick task in prompt, or pass --task GENERAL_CHAT
+3. Pin provider/model if needed: --provider GROQ --model llama-3.1-8b-instant
+4. Type normal messages after You>
+5. Use /reset to clear only current in-memory turns
+6. Use /exit to finish and save summary + extracted memories
+7. Continue from latest summary: nexus chat --user admin --parent-chat latest
+8. Continue by id: nexus chat --user admin --parent-chat nx-1234abcd
+9. Interactive parent picker: nexus chat --user admin --continue
+10. Child sessions save lineage with parent_chat:<id> tag
+
 ```bash
 # list your sessions
 nexus session list --user admin
