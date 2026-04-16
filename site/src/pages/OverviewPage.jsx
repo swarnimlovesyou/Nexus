@@ -153,8 +153,8 @@ export function OverviewPage() {
            </div>
            <div className="pillar-card">
              <Clock size={18} />
-             <h4>Session Intelligence</h4>
-             <p>Opens and closes coded agent sessions. Outcome data auto-feeds the routing recalibration engine after every close.</p>
+             <h4>Interactive Coding Sessions</h4>
+             <p>A multi-turn terminal chat connected to the optimal model, featuring contextual file injection (/read) and safe code extraction (/write).</p>
            </div>
            <div className="pillar-card">
              <Lock size={18} />

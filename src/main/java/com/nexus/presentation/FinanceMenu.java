@@ -27,6 +27,8 @@ public class FinanceMenu {
     }
 
     public void show() {
+        // Clear cache on every menu entry so admin suitability changes are reflected immediately.
+        suitabilityCache.clear();
         while (true) {
             TerminalUtils.printSeparator("FINANCIAL DASHBOARD");
             System.out.println("  1. Lifetime Report");

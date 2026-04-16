@@ -101,13 +101,20 @@ public class MenuContext {
     }
 
     /**
-     * Wraps menu actions to convert low-level DAO failures into clear user-facing guidance.
+     * Wraps menu actions to convert low-level failures into clear user-facing messages.
+     * - DaoException        → generic failureMessage (DB layer errors, don't leak internals)
+     * - NexusException      → show the service's own message (validation, access denied, etc.)
+     * - IllegalStateException → show the engine's own message (e.g. no suitability profiles)
      */
     public void runWithDaoGuard(String failureMessage, Runnable action) {
         try {
             action.run();
         } catch (DaoException e) {
             TerminalUtils.printError(failureMessage);
+        } catch (NexusException e) {
+            TerminalUtils.printError(e.getMessage());
+        } catch (IllegalStateException e) {
+            TerminalUtils.printError(e.getMessage());
         }
     }
 }

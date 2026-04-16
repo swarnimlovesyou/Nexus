@@ -55,13 +55,19 @@ public class HistoryMenu {
     }
 
     private void filterByModel() {
-        System.out.print("  Model ID: ");
-        int mid = ctx.safeInt(ctx.scanner().nextLine());
-        if (mid <= 0) {
-            TerminalUtils.printError("Invalid model ID.");
+        List<com.nexus.domain.LlmModel> models = ctx.modelDao().findAll();
+        if (models.isEmpty()) { TerminalUtils.printInfo("No models registered."); return; }
+        System.out.println();
+        for (int i = 0; i < models.size(); i++)
+            System.out.printf("  " + TerminalUtils.AMBER + "%d" + TerminalUtils.RESET + "  %s (%s)%n",
+                i + 1, models.get(i).getName(), models.get(i).getProvider());
+        System.out.print("  Model # (1-" + models.size() + "): ");
+        int midx = ctx.safeInt(ctx.scanner().nextLine()) - 1;
+        if (midx < 0 || midx >= models.size()) {
+            TerminalUtils.printError("Invalid selection.");
             return;
         }
-
+        int mid = models.get(midx).getId();
         List<OutcomeMemory> history = ctx.outcomeDao().findByUserAndModelId(ctx.userId(), mid);
         displayHistory(history);
     }
@@ -90,11 +96,12 @@ public class HistoryMenu {
         String[][] rows = new String[Math.min(history.size(), 20)][7];
         for (int i = 0; i < rows.length; i++) {
             OutcomeMemory o = history.get(i);
+            String dateStr = o.getCreatedAt() != null ? o.getCreatedAt().toLocalDate().toString() : "—";
             rows[i] = new String[]{
                 String.valueOf(o.getId()), o.getTaskType().name(), String.valueOf(o.getModelId()),
                 String.format("%.5f", o.getCost()), o.getLatencyMs() + "ms",
                 String.format("%.2f", o.getQualityScore()),
-                o.getCreatedAt().toLocalDate().toString()
+                dateStr
             };
         }
         TerminalUtils.printTable(headers, rows);

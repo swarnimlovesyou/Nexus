@@ -81,13 +81,18 @@ public class AdminMenu {
     }
 
     private void deleteUser() {
+        listUsers();
         System.out.print("  User ID to delete: ");
         int id = ctx.safeInt(ctx.scanner().nextLine());
+        if (id <= 0) { TerminalUtils.printError("Invalid user ID."); return; }
         if (id == ctx.userId()) { TerminalUtils.printError("Cannot delete yourself."); return; }
-        if (id > 0) {
-            ctx.userService().deleteUser(id);
-            TerminalUtils.printSuccess("User deleted.");
+        System.out.print("  Confirm delete user #" + id + "? (yes/no): ");
+        if (!"yes".equalsIgnoreCase(ctx.scanner().nextLine().trim())) {
+            TerminalUtils.printInfo("Cancelled.");
+            return;
         }
+        ctx.userService().deleteUser(id);
+        TerminalUtils.printSuccess("User #" + id + " deleted.");
     }
 
     private void updateUser() {
@@ -142,12 +147,22 @@ public class AdminMenu {
     }
 
     private void decommissionModel() {
+        List<LlmModel> models = ctx.modelDao().findAll();
+        if (models.isEmpty()) { TerminalUtils.printInfo("No models registered."); return; }
+        for (LlmModel m : models)
+            System.out.printf("  [%d] %s (%s)%n", m.getId(), m.getName(), m.getProvider());
         System.out.print("  Model ID to decommission: ");
         int id = ctx.safeInt(ctx.scanner().nextLine());
-        if (id > 0) {
-            ctx.modelDao().delete(id);
-            TerminalUtils.printSuccess("Model decommissioned.");
+        if (id <= 0) { TerminalUtils.printError("Invalid model ID."); return; }
+        boolean exists = models.stream().anyMatch(m -> m.getId().equals(id));
+        if (!exists) { TerminalUtils.printError("Model not found."); return; }
+        System.out.print("  Confirm decommission model #" + id + "? (yes/no): ");
+        if (!"yes".equalsIgnoreCase(ctx.scanner().nextLine().trim())) {
+            TerminalUtils.printInfo("Cancelled.");
+            return;
         }
+        ctx.modelDao().delete(id);
+        TerminalUtils.printSuccess("Model #" + id + " decommissioned.");
     }
 
     private void mapSuitability(boolean isNew) {

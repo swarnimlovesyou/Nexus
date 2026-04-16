@@ -79,7 +79,7 @@ nexus finance report --user admin --range 30d`}
              <div className="pillar-card">
                <Activity size={18} fill="rgba(232,116,92,0.1)" />
                <h4>Routing & Sessions</h4>
-               <p>Route tasks, run explain/what-if, test provider calls, and manage DB-backed coding sessions.</p>
+               <p>Route tasks, run explain/what-if, test provider calls, and run interactive coding sessions.</p>
              </div>
              <div className="pillar-card">
                <Archive size={18} fill="rgba(232,116,92,0.1)" />

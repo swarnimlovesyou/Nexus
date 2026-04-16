@@ -9,6 +9,7 @@ import com.nexus.domain.MemoryType;
 import com.nexus.domain.OutcomeMemory;
 import com.nexus.domain.TaskType;
 import com.nexus.exception.DaoException;
+import com.nexus.service.InteractiveChatService;
 import com.nexus.service.RoutingEngine;
 import com.nexus.util.TerminalUtils;
 
@@ -29,7 +30,7 @@ public class RoutingMenu {
             System.out.println("  " + TerminalUtils.AMBER + "3" + TerminalUtils.RESET + "  What-If Analysis  " + TerminalUtils.GRAY + "(different budget caps)" + TerminalUtils.RESET);
             System.out.println("  " + TerminalUtils.AMBER + "4" + TerminalUtils.RESET + "  Record Execution Outcome");
             System.out.println("  " + TerminalUtils.AMBER + "5" + TerminalUtils.RESET + "  Test Live LLM Call  " + TerminalUtils.GRAY + "(real HTTP when available)" + TerminalUtils.RESET);
-            System.out.println("  " + TerminalUtils.AMBER + "6" + TerminalUtils.RESET + "  Start Session Context");
+            System.out.println("  " + TerminalUtils.AMBER + "6" + TerminalUtils.RESET + "  Start Coding Session  " + TerminalUtils.GRAY + "(interactive chat + file access)" + TerminalUtils.RESET);
             System.out.println("  " + TerminalUtils.AMBER + "7" + TerminalUtils.RESET + "  Close Active Session");
             System.out.println("  " + TerminalUtils.AMBER + "8" + TerminalUtils.RESET + "  View My Sessions");
             System.out.println("  " + TerminalUtils.AMBER + "9" + TerminalUtils.RESET + "  Decompose & Execute Plan  " + TerminalUtils.GRAY + "(agentic split)" + TerminalUtils.RESET);
@@ -59,12 +60,27 @@ public class RoutingMenu {
         TaskType task = ctx.pickTask();
         TerminalUtils.spinner("Analysing " + task + " performance data...", 900);
 
-        LlmModel best = ctx.routingEngine().selectOptimalModelForUser(task, Double.MAX_VALUE, ctx.userId());
-        if (best == null) { TerminalUtils.printError("No suitable model found."); return; }
+        RoutingEngine.RoutingResult result = ctx.routingEngine().selectWithResult(task, Double.MAX_VALUE, ctx.userId());
+        if (result.noModelAvailable()) { TerminalUtils.printError("No suitable model found."); return; }
+
+        LlmModel best = result.recommended();
 
         System.out.println();
         TerminalUtils.printTopology();
-        
+
+        if (result.keyMissing()) {
+            LlmModel optimal = result.optimalWithoutKey();
+            TerminalUtils.printWarn("Optimal model is " + TerminalUtils.BOLD + optimal.getName()
+                + TerminalUtils.RESET + " (" + optimal.getProvider() + ") but you have no API key for it.");
+            if (best != null) {
+                TerminalUtils.printInfo("Using best available model with a key: " + best.getName() + " (" + best.getProvider() + ")");
+            } else {
+                TerminalUtils.printWarn("No key-accessible model found. Add a key in the API Key Vault.");
+                return;
+            }
+        }
+
+        // best is guaranteed non-null here
         TerminalUtils.printBox("ROUTING VERDICT", String.join("\n",
             TerminalUtils.BOLD + "Model    " + TerminalUtils.RESET + best.getName(),
             TerminalUtils.BOLD + "Provider " + TerminalUtils.RESET + best.getProvider(),
@@ -186,23 +202,47 @@ public class RoutingMenu {
         if (prompt.isEmpty()) { TerminalUtils.printError("Prompt cannot be empty."); return; }
 
         TerminalUtils.spinner("Routing prompt to optimal model...", 600);
-        LlmModel best = ctx.routingEngine().selectOptimalModelForUser(task, Double.MAX_VALUE, ctx.userId());
-        if (best == null) { TerminalUtils.printError("No suitable model found to route this task."); return; }
-        
+        RoutingEngine.RoutingResult result = ctx.routingEngine().selectWithResult(task, Double.MAX_VALUE, ctx.userId());
+
+        if (result.noModelAvailable()) { TerminalUtils.printError("No suitable model found to route this task."); return; }
+
+        LlmModel best = result.recommended();
+
+        if (result.keyMissing()) {
+            LlmModel optimal = result.optimalWithoutKey();
+            TerminalUtils.printWarn("Optimal model " + TerminalUtils.BOLD + optimal.getName()
+                + TerminalUtils.RESET + " (" + optimal.getProvider() + ") has no API key configured.");
+
+            if (best != null) {
+                // We have a key-accessible fallback — use it silently
+                TerminalUtils.printInfo("Switching to: " + best.getName() + " (" + best.getProvider() + ")");
+            } else {
+                // No key for any model — offer simulation on the optimal model
+                System.out.println();
+                System.out.print("  No keys configured. Run in SIMULATION mode using "
+                    + optimal.getName() + "? (yes/no): ");
+                String choice = ctx.scanner().nextLine().trim();
+                if (!"yes".equalsIgnoreCase(choice)) {
+                    TerminalUtils.printInfo("Cancelled. Add a key via option 3 in the API Key Vault.");
+                    return;
+                }
+                // Run simulation on the optimal (no-key) model
+                runSimulatedCall(task, optimal, prompt);
+                return;
+            }
+        }
+
+        // best is non-null here — attempt a real call with key-accessible model
         System.out.println("  " + TerminalUtils.GOLD + "Router selected: " + TerminalUtils.RESET + best.getName() + " (" + best.getProvider() + ")");
         System.out.println();
-        
+
         try {
             com.nexus.service.LlmCallService.LlmCallResult resp = ctx.llmCallService().executeCall(ctx.userId(), best, prompt);
-            
             TerminalUtils.printBox("LLM RESPONSE", resp.content());
-            
             System.out.println();
-            TerminalUtils.printInfo(String.format("Latency: %dms | Tokens: In=%d, Out=%d | Actual Cost: $%.6f", 
+            TerminalUtils.printInfo(String.format("Latency: %dms | Tokens: In=%d, Out=%d | Actual Cost: $%.6f",
                 resp.latencyMs(), resp.inputTokens(), resp.outputTokens(), resp.costUsd()));
             TerminalUtils.printInfo("Execution mode: " + (resp.simulated() ? "SIMULATED" : "REAL") + "  (" + resp.mode() + ")");
-                
-            // Auto commit outcome
             OutcomeMemory rec = new OutcomeMemory(null, ctx.userId(), best.getId(),
                 task, resp.costUsd(), (int)resp.latencyMs(), resp.simulated() ? 0.70 : 0.90, null);
             ctx.outcomeDao().create(rec);
@@ -214,21 +254,92 @@ public class RoutingMenu {
         }
     }
 
+    /** Runs a simulation call and records the outcome — used when no API key is available. */
+    private void runSimulatedCall(TaskType task, LlmModel model, String prompt) {
+        TerminalUtils.spinner("Simulating call to " + model.getName() + "...", 700);
+        try {
+            com.nexus.service.LlmCallService.LlmCallResult resp = ctx.llmCallService().executeSimulated(model, prompt);
+            TerminalUtils.printBox("SIMULATED RESPONSE", resp.content());
+            System.out.println();
+            TerminalUtils.printInfo(String.format("Latency: %dms | Est. Tokens: In=%d, Out=%d | Est. Cost: $%.6f",
+                resp.latencyMs(), resp.inputTokens(), resp.outputTokens(), resp.costUsd()));
+            TerminalUtils.printInfo("Execution mode: SIMULATED  (no API key — add one via option 3)");
+            OutcomeMemory rec = new OutcomeMemory(null, ctx.userId(), model.getId(),
+                task, resp.costUsd(), (int)resp.latencyMs(), 0.50, null);
+            ctx.outcomeDao().create(rec);
+            TerminalUtils.printSuccess("Simulated outcome recorded. Quality capped at 0.50 to mark synthetic telemetry.");
+        } catch (Exception e) {
+            TerminalUtils.printError("Simulation failed: " + e.getMessage());
+        }
+    }
+
     private void startSession() {
-        TerminalUtils.printSeparator("START SESSION CONTEXT");
+        TerminalUtils.printSeparator("START CODING SESSION");
         TaskType task = ctx.pickTask();
-        LlmModel best = ctx.routingEngine().selectOptimalModelForUser(task, Double.MAX_VALUE, ctx.userId());
-        if (best == null) {
+        RoutingEngine.RoutingResult result = ctx.routingEngine().selectWithResult(task, Double.MAX_VALUE, ctx.userId());
+
+        if (result.noModelAvailable()) {
             TerminalUtils.printError("No routed model available for this task.");
             return;
         }
 
-        System.out.println("  Routed model: " + TerminalUtils.GOLD + best.getName() + TerminalUtils.RESET + " (" + best.getProvider() + ")");
-        System.out.print("  Session note (optional): ");
-        String note = ctx.scanner().nextLine().trim();
+        LlmModel best = result.recommended();
 
-        AgentSession session = ctx.sessionService().startSession(ctx.userId(), task, best.getId(), note);
-        TerminalUtils.printSuccess("Session started: #" + session.getId() + "  task=" + task + "  model=" + best.getName());
+        if (result.keyMissing()) {
+            LlmModel optimal = result.optimalWithoutKey();
+            TerminalUtils.printWarn("Optimal model " + optimal.getName() + " (" + optimal.getProvider() + ") has no API key.");
+            if (best == null) {
+                // Offer simulation session — no real API call possible
+                System.out.print("  No key-accessible model found. Start a SIMULATION session with "
+                    + optimal.getName() + "? (yes/no): ");
+                if (!"yes".equalsIgnoreCase(ctx.scanner().nextLine().trim())) {
+                    TerminalUtils.printInfo("Cancelled. Add a key via the API Key Vault first.");
+                    return;
+                }
+                best = optimal; // Use optimal model in simulation
+            } else {
+                TerminalUtils.printInfo("Session will use: " + best.getName() + " (" + best.getProvider() + ")");
+            }
+        }
+
+        // Create session record
+        AgentSession session = ctx.sessionService().startSession(ctx.userId(), task, best.getId(), "");
+        TerminalUtils.printSuccess("Session #" + session.getId() + " opened. Chat started.");
+
+        // Launch interactive chat — blocks until user types /exit
+        InteractiveChatService chat = new InteractiveChatService(
+            ctx.llmCallService(), ctx.profileService(), ctx.scanner());
+        InteractiveChatService.ChatResult chatResult = chat.run(
+            ctx.userId(), session.getId(), best, task);
+
+        // Auto-close session with accumulated data
+        try {
+            AgentSession closed = ctx.sessionService().closeSession(
+                ctx.userId(), session.getId(),
+                chatResult.totalInputTokens(), chatResult.totalOutputTokens(),
+                chatResult.qualityScore(),
+                "Interactive chat — " + chatResult.turns() + " turn(s)");
+            System.out.println();
+            TerminalUtils.printSuccess(String.format(
+                "Session #%d closed and saved. Total cost: $%.7f | Quality: %.2f | Turns: %d",
+                session.getId(), closed.getTotalCost(),
+                closed.getQualityScore(), chatResult.turns()));
+
+            // Auto-create EPISODE memory for significant sessions (≥2 turns)
+            if (chatResult.turns() >= 2) {
+                String content = String.format(
+                    "Coding session with %s on %s: %d turns, cost=$%.7f, quality=%.2f",
+                    best.getName(), task.name(), chatResult.turns(),
+                    closed.getTotalCost(), closed.getQualityScore());
+                String tags = best.getName().toLowerCase() + "," + task.name().toLowerCase() + ",session";
+                try {
+                    Memory mem = ctx.memoryService().store(ctx.userId(), content, tags, MemoryType.EPISODE, 90);
+                    TerminalUtils.printSuccess("EPISODE memory #" + mem.getId() + " created in vault.");
+                } catch (Exception ignored) {}
+            }
+        } catch (Exception e) {
+            TerminalUtils.printError("Session record could not be saved: " + e.getMessage());
+        }
     }
 
     private void closeSession() {
@@ -333,9 +444,18 @@ public class RoutingMenu {
         int step = 1;
         for (var task : plan) {
             TerminalUtils.printSeparator("STEP " + step + ": " + task.type());
-            LlmModel best = ctx.routingEngine().selectOptimalModelForUser(task.type(), Double.MAX_VALUE, ctx.userId());
-            if (best == null) {
+            RoutingEngine.RoutingResult result = ctx.routingEngine().selectWithResult(task.type(), Double.MAX_VALUE, ctx.userId());
+            if (result.noModelAvailable()) {
                 TerminalUtils.printError("Routing failed for " + task.type());
+                continue;
+            }
+            LlmModel best = result.recommended();
+            if (result.keyMissing()) {
+                TerminalUtils.printWarn("Optimal model " + result.optimalWithoutKey().getName() + " has no key. Using " + (best != null ? best.getName() : "none") + " instead.");
+            }
+            if (best == null) {
+                TerminalUtils.printError("No key-accessible model for step " + step + ". Skipping.");
+                step++;
                 continue;
             }
             System.out.println("  " + TerminalUtils.GRAY + "Routed to: " + TerminalUtils.RESET + best.getName() + " (" + best.getProvider() + ")");

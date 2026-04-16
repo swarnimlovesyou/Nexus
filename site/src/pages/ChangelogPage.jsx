@@ -34,7 +34,7 @@ const releases = [
       { kind: 'new', text: 'Agentic Task Decomposition — TaskPlannerService splits compound prompts into typed sub-tasks each routed independently for cost efficiency' },
       { kind: 'new', text: 'Financial Intelligence Dashboard — per-model and per-task cost tracking with savings projections' },
       { kind: 'new', text: 'Execution History with task/model/date filters and user-scoped ownership controls' },
-      { kind: 'new', text: 'Session Context — open and close coding sessions, auto-write outcome records on session close' },
+      { kind: 'new', text: 'Interactive Coding Sessions — multi-turn terminal chat with filesystem access (/read, /write)' },
       { kind: 'new', text: 'Audit Log — every significant system event persisted to SQLite (8 tables total in schema)' },
       { kind: 'new', text: 'Model Discovery — full suitability matrix across all registered providers and task types' },
       { kind: 'new', text: 'Admin panel — user management, model registration, registry overrides, and decommission flows' },

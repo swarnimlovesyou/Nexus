@@ -48,8 +48,7 @@ public class ApiKeyMenu {
         Provider p = providers[pidx];
         System.out.print("  Alias (e.g. my-work-key): ");
         String alias = ctx.scanner().nextLine().trim();
-        System.out.print("  API Key: ");
-        String rawKey = ctx.scanner().nextLine().trim();
+        String rawKey = readSensitive("  API Key (input hidden): ");
         if (rawKey.isEmpty()) { TerminalUtils.printError("API key cannot be empty."); return; }
 
         TerminalUtils.spinner("Encoding and storing key...", 500);
@@ -88,5 +87,17 @@ public class ApiKeyMenu {
             ctx.apiKeyService().deleteKey(ctx.userId(), id);
             TerminalUtils.printSuccess("Key deleted.");
         }
+    }
+
+    /** Reads sensitive input without echoing when a real console is available. */
+    private String readSensitive(String prompt) {
+        java.io.Console console = System.console();
+        if (console != null) {
+            char[] raw = console.readPassword(prompt);
+            return raw == null ? "" : new String(raw);
+        }
+        // IDE / piped terminal fallback — warn the user
+        System.out.print(prompt + " (visible — no console detected): ");
+        return ctx.scanner().nextLine().trim();
     }
 }

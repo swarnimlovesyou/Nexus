@@ -53,17 +53,29 @@ public class RoutingEngine {
     }
 
     /**
-     * Method Overload 3: User-aware routing.
-     * Filters models to only those the user has an API key for.
-     * Falls back to all models if the user has no keys configured.
+     * Method Overload 3: User-aware routing — backward-compatible convenience wrapper.
+     * Returns the best key-accessible model, or the unconstrained best if no keys are stored.
+     * For richer Key-missing information, use selectWithResult() instead.
      */
     public LlmModel selectOptimalModelForUser(TaskType taskType, double maxCostPer1k, Integer userId) {
+        return selectWithResult(taskType, maxCostPer1k, userId).recommended();
+    }
+
+    /**
+     * Full routing decision, returns a RoutingResult that tells the caller:
+     *  - recommended()        : best model the user CAN use (has a key, or no keys configured)
+     *  - optimalWithoutKey()  : the globally top-scoring model, even if no key is stored
+     *  - keyMissing()         : true when the unconstrained optimal differs from recommended
+     *
+     * This allows callers (e.g. RoutingMenu) to say:
+     *   "The optimal model is X but you don't have the key — using Y instead."
+     */
+    public RoutingResult selectWithResult(TaskType taskType, double maxCostPer1k, Integer userId) {
         List<ModelSuitability> suitabilities = suitabilityDao.findByTaskType(taskType);
         if (suitabilities.isEmpty()) {
             throw new IllegalStateException("No suitability profiles found for: " + taskType);
         }
 
-        // Build set of providers user has keys for (null userId = no filter)
         Set<Provider> accessibleProviders = getAccessibleProviders(userId);
 
         List<OutcomeMemory> history = outcomeMemoryDao.findByTaskType(taskType);
@@ -72,70 +84,78 @@ public class RoutingEngine {
             histByModel.computeIfAbsent(m.getModelId(), k -> new ArrayList<>()).add(m);
         }
 
-        // Compute max latency and cost for normalisation
         double maxLatency = history.stream().mapToDouble(OutcomeMemory::getLatencyMs).max().orElse(3000);
         double maxCost    = suitabilities.stream()
             .map(s -> llmModelDao.read(s.getModelId()))
             .filter(Optional::isPresent).map(Optional::get)
             .mapToDouble(LlmModel::getCostPer1kTokens).max().orElse(0.10);
 
-        LlmModel bestModel    = null;
-        double   highestScore = -1.0;
+        // --- Pass 1: Score ALL eligible models regardless of key --------------------------------
+        LlmModel globalBest      = null;
+        double   globalBestScore = -1.0;
+
+        // --- Pass 2: Score only models the user has a key for ----------------------------------
+        LlmModel keyedBest      = null;
+        double   keyedBestScore = -1.0;
 
         for (ModelSuitability ms : suitabilities) {
             Optional<LlmModel> modelOpt = llmModelDao.read(ms.getModelId());
             if (modelOpt.isEmpty()) continue;
             LlmModel model = modelOpt.get();
-
             if (model.getCostPer1kTokens() > maxCostPer1k) continue;
-
-            Optional<Provider> modelProvider = Provider.fromAny(model.getProvider());
-            // Skip if user has keys configured but not for this provider.
-            if (!accessibleProviders.isEmpty() && (modelProvider.isEmpty() || !accessibleProviders.contains(modelProvider.get()))) {
-                continue;
-            }
 
             List<OutcomeMemory> modelHist = histByModel.getOrDefault(model.getId(), new ArrayList<>());
             double composite = computeComposite(ms, model, modelHist, maxLatency, maxCost);
 
-            if (composite > highestScore) {
-                highestScore = composite;
-                bestModel    = model;
+            // Track unconstrained global best
+            if (composite > globalBestScore) {
+                globalBestScore = composite;
+                globalBest = model;
+            }
+
+            // Track best among key-accessible providers only
+            if (!accessibleProviders.isEmpty()) {
+                Optional<Provider> modelProvider = Provider.fromAny(model.getProvider());
+                boolean hasKey = modelProvider.isPresent() && accessibleProviders.contains(modelProvider.get());
+                if (hasKey && composite > keyedBestScore) {
+                    keyedBestScore = composite;
+                    keyedBest = model;
+                }
             }
         }
 
-        // If filtering by provider left no results, fall back to all models (no key filter)
-        if (bestModel == null && !accessibleProviders.isEmpty()) {
-            return selectOptimalModelForUser(taskType, maxCostPer1k, null);
-        }
+        // If user has no keys configured at all, treat everything as accessible
+        boolean noKeysConfigured = accessibleProviders.isEmpty();
+        LlmModel recommended = noKeysConfigured ? globalBest : keyedBest;
 
-        // Capture final snapshot — bestModel is mutated in the loop, can't be used directly in lambdas
-        final LlmModel finalBest = bestModel;
-        final double   finalScore = highestScore;
+        // Key is "missing" when the global champion is a different model than the keyed champion
+        boolean keyMissing = !noKeysConfigured
+            && globalBest != null
+            && (recommended == null || !globalBest.getId().equals(recommended.getId()));
 
-        if (finalBest != null) {
-            // Persist a rich RoutingDecision audit record with all 4 individual signal scores.
-            // This makes the audit log queryable and demonstrates the engine's full reasoning.
+        // Persist audit record
+        final LlmModel auditModel = recommended != null ? recommended : globalBest;
+        if (auditModel != null) {
             List<ModelSuitability> suits = suitabilityDao.findByTaskType(taskType);
             double suitScore = suits.stream()
-                .filter(s -> s.getModelId().equals(finalBest.getId()))
+                .filter(s -> s.getModelId().equals(auditModel.getId()))
                 .mapToDouble(ModelSuitability::getBaseScore).findFirst().orElse(0.0);
-            List<OutcomeMemory> bestHist = histByModel.getOrDefault(finalBest.getId(), new ArrayList<>());
+            List<OutcomeMemory> bestHist = histByModel.getOrDefault(auditModel.getId(), new ArrayList<>());
             double qualScore = bestHist.isEmpty() ? 0.5 : bestHist.stream().mapToDouble(OutcomeMemory::getQualityScore).average().orElse(0.5);
             double latScore  = bestHist.isEmpty() ? 0.5 : 1.0 - (bestHist.stream().mapToDouble(OutcomeMemory::getLatencyMs).average().orElse(1500) / Math.max(1, maxLatency));
-            double costScore = maxCost == 0 ? 1.0 : 1.0 - (finalBest.getCostPer1kTokens() / maxCost);
-            boolean keyPresent = accessibleProviders.isEmpty()
-                || Provider.fromAny(finalBest.getProvider()).map(accessibleProviders::contains).orElse(false);
+            double costScore = maxCost == 0 ? 1.0 : 1.0 - (auditModel.getCostPer1kTokens() / maxCost);
+            double score     = recommended == auditModel ? (keyedBestScore > 0 ? keyedBestScore : globalBestScore) : globalBestScore;
 
             String richDetails = String.format(
-                "task=%s | model=%s | composite=%.3f | suit=%.2f | qual=%.2f | lat=%.2f | cost=%.2f | samples=%d | keyPresent=%b",
-                taskType, finalBest.getName(), finalScore,
+                "task=%s | model=%s | composite=%.3f | suit=%.2f | qual=%.2f | lat=%.2f | cost=%.2f | samples=%d | keyPresent=%b | keyMissing=%b",
+                taskType, auditModel.getName(), score,
                 suitScore, qualScore, latScore, costScore,
-                bestHist.size(), keyPresent
+                bestHist.size(), !keyMissing, keyMissing
             );
             auditLogDao.create(new AuditLog(null, userId, "ROUTING_DECISION", richDetails, "SUCCESS", null));
         }
-        return finalBest;
+
+        return new RoutingResult(recommended, globalBest, keyMissing);
     }
 
     /**
@@ -279,4 +299,21 @@ public class RoutingEngine {
         int sampleSize,
         boolean hasApiKey
     ) {}
+
+    /**
+     * Full routing decision result.
+     *
+     * recommended()       — model to actually use (has API key, or no keys configured at all)
+     * optimalWithoutKey() — globally highest-scoring model regardless of whether a key exists
+     * keyMissing()        — true when the unconstrained optimal model has no key stored for it,
+     *                       so recommended() is a fallback, not the true best
+     */
+    public record RoutingResult(
+        LlmModel recommended,
+        LlmModel optimalWithoutKey,
+        boolean keyMissing
+    ) {
+        /** Convenience: true when recommended == null (no usable model at all) */
+        public boolean noModelAvailable() { return recommended == null && optimalWithoutKey == null; }
+    }
 }

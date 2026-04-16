@@ -43,11 +43,13 @@ execution history, cost analytics, and auditable event logs on top of SQLite.
 - Suitability matrix view by task type
 - Admin CRUD operations for users/models and suitability score management
 
-### 8) Session Context (DB-backed)
-- Start an active coding session for a task with routed model recommendation
-- Close session with aggregate tokens + quality
-- Auto-persists one `outcome_memories` record at session close
-- Session close also writes a memory episode entry for future recall
+### 8) Interactive Coding Sessions
+- Start a multi-turn interactive chat session in the terminal with the routed optimal model
+- Interactive slash commands: `/read`, `/write`, `/ls`, `/cost`, `/clear`, `/exit`
+- Inject entire files into the conversation context (governed by `context.max_injection_tokens` profile policy)
+- Safely extract generated code blocks and save them directly to disk (governed by `policy.allow_file_write` profile policy)
+- Automatically tracks accumulated tokens + cost across the multi-turn exchange
+- Auto-persists `outcome_memories` and a semantic `EPISODE` memory upon closing the session
 
 ### 9) Live LLM Test Calls
 - Real HTTP call path for OpenAI-compatible providers (`OpenAI`, `Groq`, `OpenRouter`), plus Anthropic and Gemini paths

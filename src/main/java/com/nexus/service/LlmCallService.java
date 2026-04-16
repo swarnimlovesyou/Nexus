@@ -15,9 +15,11 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 import com.nexus.dao.LlmModelDao;
 import com.nexus.dao.UserDao;
+import com.nexus.domain.ChatMessage;
 import com.nexus.domain.LlmModel;
 import com.nexus.domain.Provider;
 import com.nexus.domain.User;
@@ -413,6 +415,212 @@ public class LlmCallService {
             throw new Exception("HTTP " + code + ": " + errorMsg);
         }
         return response.body();
+    }
+
+    /**
+     * Public entry point for explicit simulation mode.
+     * Used when the caller knows no key is available but still wants to test
+     * the routing decision and record a telemetry outcome.
+     */
+    public LlmCallResult executeSimulated(LlmModel model, String prompt) throws InterruptedException {
+        Provider provider = Provider.fromAny(model.getProvider()).orElse(Provider.CUSTOM);
+        return simulateCall(model, provider, estimateTokens(prompt));
+    }
+
+    // ════════════════════════════════════════════════════════════════════════
+    // MULTI-TURN CONVERSATION
+    // ════════════════════════════════════════════════════════════════════════
+
+    /**
+     * Multi-turn conversation API call.
+     * Sends the full ChatMessage history to the provider and returns the next assistant reply.
+     * Falls back to simulation if no key is available or the network call fails.
+     */
+    public LlmCallResult executeConversation(int userId, LlmModel model, List<ChatMessage> history) throws Exception {
+        Provider provider = Provider.fromAny(model.getProvider())
+            .orElseThrow(() -> new Exception("Unsupported provider: " + model.getProvider()));
+
+        Optional<String> keyOpt = apiKeyService.retrieveRawKey(userId, provider);
+        if (keyOpt.isEmpty()) {
+            throw new Exception("No API key for " + provider.getDisplayName() + ". Add one via API Key Vault.");
+        }
+        String apiKey = keyOpt.get();
+        Instant start = Instant.now();
+
+        try {
+            ProviderResponse provResp = executeMultiTurnCall(provider, model, history, apiKey);
+            long latencyMs = Duration.between(start, Instant.now()).toMillis();
+
+            int inputTokens  = provResp.inputTokens  > 0 ? provResp.inputTokens  : estimateHistoryTokens(history);
+            int outputTokens = provResp.outputTokens > 0 ? provResp.outputTokens : estimateTokens(provResp.content);
+            double costUsd   = ((inputTokens + outputTokens) / 1000.0) * model.getCostPer1kTokens();
+
+            return new LlmCallResult(provResp.content, latencyMs, inputTokens, outputTokens, costUsd, false, "Multi-turn real call");
+        } catch (Exception realErr) {
+            TerminalUtils.printWarn("Live call failed, using simulation: " + realErr.getMessage());
+            return simulateCall(model, provider, estimateHistoryTokens(history));
+        }
+    }
+
+    private ProviderResponse executeMultiTurnCall(Provider provider, LlmModel model,
+                                                   List<ChatMessage> history, String apiKey) throws Exception {
+        return switch (provider) {
+            case OPENAI, GROQ, OPENROUTER -> executeOpenAiMultiTurn(provider, model, history, apiKey);
+            case ANTHROPIC                -> executeAnthropicMultiTurn(model, history, apiKey);
+            case GOOGLE_GEMINI            -> executeGeminiMultiTurn(model, history, apiKey);
+            case CUSTOM -> throw new Exception("CUSTOM provider is not supported for multi-turn conversation.");
+        };
+    }
+
+    private ProviderResponse executeOpenAiMultiTurn(Provider provider, LlmModel model,
+                                                     List<ChatMessage> history, String apiKey) throws Exception {
+        // OpenAI / Groq: messages array with system / user / assistant roles
+        StringBuilder msgs = new StringBuilder("[");
+        for (int i = 0; i < history.size(); i++) {
+            ChatMessage m = history.get(i);
+            if (i > 0) msgs.append(",");
+            msgs.append("{\"role\":\"").append(m.role())
+                .append("\",\"content\":\"").append(jsonEscape(m.content())).append("\"").append("}");
+        }
+        msgs.append("]");
+
+        String endpoint = provider.getBaseUrl() + "/chat/completions";
+        String payload  = "{\"model\":\"" + jsonEscape(model.getName()) + "\","
+            + "\"messages\":" + msgs + ","
+            + "\"temperature\":0.3}";
+
+        Map<String, String> headers = new HashMap<>();
+        headers.put("Authorization", "Bearer " + apiKey);
+        headers.put("Content-Type", "application/json");
+
+        // Reuse Groq auto-switch logic from single-turn
+        try {
+            return parseOpenAiCompatibleResponse(sendJson(provider, endpoint, payload, headers));
+        } catch (Exception e) {
+            if (provider == Provider.GROQ && isModelNotFound(e)) {
+                List<String> available = listOpenAiCompatibleModelIds(provider, apiKey);
+                String chosen = choosePreferredGroqModelId(available);
+                if (chosen != null && !chosen.equalsIgnoreCase(model.getName())) {
+                    model.setName(chosen);
+                    if (modelDao != null && model.getId() != null) {
+                        try { modelDao.update(model); } catch (Exception ignored) {}
+                    }
+                    String retryPayload = payload.replace(
+                        "\"model\":\"" + jsonEscape(model.getName()) + "\"",
+                        "\"model\":\"" + jsonEscape(chosen) + "\""
+                    );
+                    return parseOpenAiCompatibleResponse(sendJson(provider, endpoint, retryPayload, headers));
+                }
+            }
+            throw e;
+        }
+    }
+
+    private ProviderResponse executeAnthropicMultiTurn(LlmModel model,
+                                                        List<ChatMessage> history, String apiKey) throws Exception {
+        // Anthropic: system message goes in top-level "system" field; messages must alternate user/assistant
+        String systemContent = history.stream()
+            .filter(ChatMessage::isSystem)
+            .map(ChatMessage::content)
+            .collect(Collectors.joining("\n"));
+
+        StringBuilder msgs = new StringBuilder("[");
+        boolean first = true;
+        for (ChatMessage m : history) {
+            if (m.isSystem()) continue;
+            if (!first) msgs.append(",");
+            msgs.append("{\"role\":\"").append(m.role())
+                .append("\",\"content\":\"").append(jsonEscape(m.content())).append("\"").append("}");
+            first = false;
+        }
+        msgs.append("]");
+
+        String endpoint = Provider.ANTHROPIC.getBaseUrl() + "/v1/messages";
+        String payload;
+        if (!systemContent.isEmpty()) {
+            payload = "{\"model\":\"" + jsonEscape(model.getName()) + "\","
+                + "\"max_tokens\":1024,"
+                + "\"system\":\"" + jsonEscape(systemContent) + "\","
+                + "\"messages\":" + msgs + "}";
+        } else {
+            payload = "{\"model\":\"" + jsonEscape(model.getName()) + "\","
+                + "\"max_tokens\":1024,"
+                + "\"messages\":" + msgs + "}";
+        }
+
+        Map<String, String> headers = new HashMap<>();
+        headers.put("x-api-key", apiKey);
+        headers.put("anthropic-version", "2023-06-01");
+        headers.put("Content-Type", "application/json");
+
+        String body        = sendJson(Provider.ANTHROPIC, endpoint, payload, headers);
+        String text        = extractFirstString(body, "text");
+        int inputTokens    = extractFirstInt(body, "input_tokens",  -1);
+        int outputTokens   = extractFirstInt(body, "output_tokens", -1);
+        if (text == null || text.isEmpty()) throw new Exception("Anthropic returned no text content.");
+        return new ProviderResponse(jsonUnescape(text), inputTokens, outputTokens);
+    }
+
+    private ProviderResponse executeGeminiMultiTurn(LlmModel model,
+                                                     List<ChatMessage> history, String apiKey) throws Exception {
+        // Gemini: roles are "user" and "model"; system goes in system_instruction
+        String systemContent = history.stream()
+            .filter(ChatMessage::isSystem)
+            .map(ChatMessage::content)
+            .collect(Collectors.joining("\n"));
+
+        StringBuilder contents = new StringBuilder("[");
+        boolean first = true;
+        for (ChatMessage m : history) {
+            if (m.isSystem()) continue;
+            if (!first) contents.append(",");
+            String geminiRole = m.isAssistant() ? "model" : "user";
+            contents.append("{\"role\":\"").append(geminiRole)
+                .append("\",\"parts\":[{\"text\":\"").append(jsonEscape(m.content())).append("\"}]}");
+            first = false;
+        }
+        contents.append("]");
+
+        String endpoint = Provider.GOOGLE_GEMINI.getBaseUrl()
+            + "/v1beta/models/" + URLEncoder.encode(model.getName(), StandardCharsets.UTF_8)
+            + ":generateContent?key=" + URLEncoder.encode(apiKey, StandardCharsets.UTF_8);
+
+        String payload;
+        if (!systemContent.isEmpty()) {
+            payload = "{\"system_instruction\":{\"parts\":[{\"text\":\""
+                + jsonEscape(systemContent) + "\"}]},"
+                + "\"contents\":" + contents + "}";
+        } else {
+            payload = "{\"contents\":" + contents + "}";
+        }
+
+        Map<String, String> headers = new HashMap<>();
+        headers.put("Content-Type", "application/json");
+
+        try {
+            return parseGeminiGenerateContentResponse(sendJson(Provider.GOOGLE_GEMINI, endpoint, payload, headers));
+        } catch (Exception e) {
+            if (isGeminiModelNotFound(e)) {
+                List<String> available = listGeminiModelIds(apiKey);
+                String replacement = choosePreferredGeminiModelId(available);
+                if (replacement != null && !replacement.equalsIgnoreCase(model.getName())) {
+                    model.setName(replacement);
+                    if (modelDao != null && model.getId() != null) {
+                        try { modelDao.update(model); } catch (Exception ignored) {}
+                    }
+                    String retryEndpoint = Provider.GOOGLE_GEMINI.getBaseUrl()
+                        + "/v1beta/models/" + URLEncoder.encode(model.getName(), StandardCharsets.UTF_8)
+                        + ":generateContent?key=" + URLEncoder.encode(apiKey, StandardCharsets.UTF_8);
+                    return parseGeminiGenerateContentResponse(sendJson(Provider.GOOGLE_GEMINI, retryEndpoint, payload, headers));
+                }
+            }
+            throw e;
+        }
+    }
+
+    /** Estimates total token count for all messages in history. */
+    private int estimateHistoryTokens(List<ChatMessage> history) {
+        return history.stream().mapToInt(m -> estimateTokens(m.content())).sum();
     }
 
     private LlmCallResult simulateCall(LlmModel model, Provider provider, int estimatedInputTokens) throws InterruptedException {
