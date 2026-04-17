@@ -87,10 +87,10 @@ public class NexusCommandRunner {
     public static boolean tryRun(String[] args) {
         if (args == null || args.length == 0) return false;
 
-        String[] effective = args;
+        String[] effective = normalizeSlashAndAliases(args);
         String top = args[0].toLowerCase(Locale.ROOT);
         if ("command".equals(top) || "cmd".equals(top)) {
-            effective = Arrays.copyOfRange(args, 1, args.length);
+            effective = normalizeSlashAndAliases(Arrays.copyOfRange(args, 1, args.length));
             if (effective.length == 0) {
                 NexusCommandRunner runner = new NexusCommandRunner();
                 runner.printCommandHelp();
@@ -118,6 +118,29 @@ public class NexusCommandRunner {
 
         NexusCommandRunner runner = new NexusCommandRunner();
         return runner.dispatch(effective);
+    }
+
+    private static String[] normalizeSlashAndAliases(String[] args) {
+        if (args == null || args.length == 0) return new String[0];
+
+        String[] out = Arrays.copyOf(args, args.length);
+        String first = out[0] == null ? "" : out[0].trim();
+        while (first.startsWith("/")) {
+            first = first.substring(1);
+        }
+        if (!first.isBlank()) {
+            out[0] = first;
+        }
+        return out;
+    }
+
+    private static String[] prependAction(String action, String[] rest) {
+        String[] merged = new String[(rest == null ? 0 : rest.length) + 1];
+        merged[0] = action;
+        if (rest != null && rest.length > 0) {
+            System.arraycopy(rest, 0, merged, 1, rest.length);
+        }
+        return merged;
     }
 
     private boolean dispatch(String[] args) {
@@ -205,6 +228,118 @@ public class NexusCommandRunner {
                     printCommandHelp();
                     yield true;
                 }
+                case "h", "?" -> {
+                    printCommandHelp();
+                    yield true;
+                }
+
+                // Claurst-compatible shortcuts and slash command aliases.
+                case "cost", "usage" -> {
+                    handleFinance(prependAction("report", Arrays.copyOfRange(args, 1, args.length)));
+                    yield true;
+                }
+                case "stats" -> {
+                    handleStats(Arrays.copyOfRange(args, 1, args.length));
+                    yield true;
+                }
+                case "status" -> {
+                    handleStatus(Arrays.copyOfRange(args, 1, args.length));
+                    yield true;
+                }
+                case "version", "v" -> {
+                    printVersion();
+                    yield true;
+                }
+                case "update", "upgrade" -> {
+                    printUpdate();
+                    yield true;
+                }
+                case "resume", "continue" -> {
+                    handleSession(prependAction("resume", Arrays.copyOfRange(args, 1, args.length)));
+                    yield true;
+                }
+                case "fork" -> {
+                    handleSession(prependAction("fork", Arrays.copyOfRange(args, 1, args.length)));
+                    yield true;
+                }
+                case "rename" -> {
+                    handleSession(prependAction("rename", Arrays.copyOfRange(args, 1, args.length)));
+                    yield true;
+                }
+                case "rewind", "checkpoint" -> {
+                    handleSession(prependAction("rewind", Arrays.copyOfRange(args, 1, args.length)));
+                    yield true;
+                }
+                case "export" -> {
+                    handleSession(prependAction("export", Arrays.copyOfRange(args, 1, args.length)));
+                    yield true;
+                }
+                case "providers" -> {
+                    handleProvider(prependAction("list", Arrays.copyOfRange(args, 1, args.length)));
+                    yield true;
+                }
+                case "connect" -> {
+                    handleProvider(prependAction("setup", Arrays.copyOfRange(args, 1, args.length)));
+                    yield true;
+                }
+                case "doctor" -> {
+                    handleProfile(prependAction("doctor", Arrays.copyOfRange(args, 1, args.length)));
+                    yield true;
+                }
+                case "settings", "config" -> {
+                    handleProfile(prependAction("list", Arrays.copyOfRange(args, 1, args.length)));
+                    yield true;
+                }
+                case "clear", "reset", "new" -> {
+                    TerminalUtils.printInfo("/clear resets interactive chat state. Command mode is stateless per invocation.");
+                    yield true;
+                }
+                case "exit", "quit" -> {
+                    TerminalUtils.printInfo("No active interactive REPL in command mode. Use Ctrl+C in your shell to stop running processes.");
+                    yield true;
+                }
+                case "mcp" -> {
+                    handleMcp(Arrays.copyOfRange(args, 1, args.length));
+                    yield true;
+                }
+                case "plugin", "plugins", "marketplace" -> {
+                    handlePlugin(Arrays.copyOfRange(args, 1, args.length));
+                    yield true;
+                }
+                case "reload-plugins" -> {
+                    handlePlugin(prependAction("reload", Arrays.copyOfRange(args, 1, args.length)));
+                    yield true;
+                }
+                case "hooks" -> {
+                    handleHooks(Arrays.copyOfRange(args, 1, args.length));
+                    yield true;
+                }
+                case "permissions" -> {
+                    handlePermissions(Arrays.copyOfRange(args, 1, args.length));
+                    yield true;
+                }
+                case "skills" -> {
+                    handleSkills(Arrays.copyOfRange(args, 1, args.length));
+                    yield true;
+                }
+                case "agents" -> {
+                    handleAgents(Arrays.copyOfRange(args, 1, args.length));
+                    yield true;
+                }
+                case "tasks" -> {
+                    handleTasks(Arrays.copyOfRange(args, 1, args.length));
+                    yield true;
+                }
+                case "plan", "ultraplan" -> {
+                    handlePlanCompat(top, Arrays.copyOfRange(args, 1, args.length));
+                    yield true;
+                }
+                case "theme", "statusline", "vim", "voice", "terminal-setup",
+                     "search", "files", "context", "review", "security-review",
+                     "commit", "diff", "undo", "init", "brief", "summary", "login", "logout", "refresh", "model" -> {
+                    handleCompatInfo(top);
+                    yield true;
+                }
                 default -> false;
             };
         } catch (DaoException e) {
@@ -234,6 +369,11 @@ public class NexusCommandRunner {
             case "list" -> sessionList(user);
             case "start" -> sessionStart(user, flags);
             case "close" -> sessionClose(user, flags);
+            case "resume" -> sessionResume(user, flags);
+            case "rename" -> sessionRename(user, flags);
+            case "fork" -> sessionFork(user, flags);
+            case "rewind" -> sessionRewind(user, flags);
+            case "export" -> sessionExport(user, flags);
             default -> printSessionHelp();
         }
     }
@@ -245,16 +385,20 @@ public class NexusCommandRunner {
             return;
         }
 
-        String[] headers = {"ID", "Status", "Task", "Model", "Cost", "Quality", "Created"};
-        String[][] rows = new String[Math.min(20, sessions.size())][7];
+        Map<Integer, String> titles = loadSessionTitleIndex(user.getId());
+
+        String[] headers = {"ID", "Status", "Task", "Model", "Title", "Cost", "Quality", "Created"};
+        String[][] rows = new String[Math.min(20, sessions.size())][8];
         for (int i = 0; i < rows.length; i++) {
             AgentSession s = sessions.get(i);
             String model = modelDao.read(s.getModelId()).map(LlmModel::getName).orElse("model#" + s.getModelId());
+            String title = titles.getOrDefault(s.getId(), "-");
             rows[i] = new String[]{
                 String.valueOf(s.getId()),
                 s.isActive() ? "ACTIVE" : "CLOSED",
                 s.getTaskType().name(),
                 model,
+                truncate(title, 36),
                 s.getTotalCost() == null ? "-" : String.format("$%.6f", s.getTotalCost()),
                 s.getQualityScore() == null ? "-" : String.format("%.2f", s.getQualityScore()),
                 s.getCreatedAt().toLocalDate().toString()
@@ -291,6 +435,296 @@ public class NexusCommandRunner {
         AgentSession closed = sessionService.closeSession(user.getId(), id, in, out, quality, note);
         TerminalUtils.printSuccess("Session closed: #" + closed.getId());
         TerminalUtils.printInfo(String.format("Cost=%s Quality=%.2f", String.format("$%.6f", closed.getTotalCost()), closed.getQualityScore()));
+    }
+
+    private void sessionResume(User user, Map<String, String> flags) {
+        List<Memory> transcripts = loadSessionTranscripts(user.getId());
+        if (transcripts.isEmpty()) {
+            TerminalUtils.printInfo("No transcript memories found yet. Complete a coding session first.");
+            return;
+        }
+
+        Memory selected = selectTranscriptMemory(transcripts, flags, false);
+        if (selected == null) {
+            TerminalUtils.printInfo("No matching session transcript found.");
+            return;
+        }
+
+        int sessionId = parseIntOrDefault(tagValue(selected.getTags(), "session"), -1);
+        String title = loadSessionTitleIndex(user.getId()).getOrDefault(sessionId, "-");
+        String transcript = selected.getContent() == null ? "" : selected.getContent().trim();
+        int tailTurns = Math.max(1, parseIntOrDefault(flags.get("--tail"), 10));
+
+        TerminalUtils.printSeparator("SESSION RESUME");
+        TerminalUtils.printInfo("Session: #" + sessionId + " | Title: " + title);
+        TerminalUtils.printInfo("Transcript memory: #" + selected.getId());
+
+        String excerpt = transcriptTail(transcript, tailTurns);
+        if (excerpt.isBlank()) {
+            TerminalUtils.printWarn("Transcript was empty.");
+        } else {
+            System.out.println(excerpt);
+        }
+    }
+
+    private void sessionRename(User user, Map<String, String> flags) {
+        int sessionId = Integer.parseInt(require(flags, "--id", "Missing --id for session rename"));
+        String title = flags.get("--title");
+        if (title == null || title.isBlank()) {
+            title = require(flags, "--name", "Missing --title or --name for session rename");
+        }
+
+        AgentSession target = sessionService.listUserSessions(user.getId()).stream()
+            .filter(s -> s.getId().equals(sessionId))
+            .findFirst()
+            .orElseThrow(() -> new IllegalArgumentException("Session not found: #" + sessionId));
+
+        com.nexus.service.MemoryService memoryService = new com.nexus.service.MemoryService();
+        String scope = memoryService.currentWorkspaceScope();
+        String tags = "session_meta:true,session:" + sessionId + ",meta:title";
+        memoryService.storeScoped(user.getId(), scope, title.trim(), tags, MemoryType.FACT, 3650, true);
+
+        TerminalUtils.printSuccess("Session title saved.");
+        TerminalUtils.printInfo("Session #" + target.getId() + " -> " + title.trim());
+    }
+
+    private void sessionFork(User user, Map<String, String> flags) {
+        List<AgentSession> sessions = sessionService.listUserSessions(user.getId());
+        if (sessions.isEmpty()) {
+            TerminalUtils.printInfo("No sessions available to fork.");
+            return;
+        }
+
+        AgentSession source;
+        String idRaw = flags.get("--id");
+        if (idRaw == null || idRaw.isBlank() || "latest".equalsIgnoreCase(idRaw)) {
+            source = sessions.get(0);
+        } else {
+            int id = Integer.parseInt(idRaw);
+            source = sessions.stream()
+                .filter(s -> s.getId().equals(id))
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("Session not found: #" + id));
+        }
+
+        String note = "forked_from_session:" + source.getId();
+        AgentSession forked = sessionService.startSession(user.getId(), source.getTaskType(), source.getModelId(), note);
+
+        List<Memory> transcripts = loadSessionTranscripts(user.getId());
+        Memory sourceTranscript = transcripts.stream()
+            .filter(m -> parseIntOrDefault(tagValue(m.getTags(), "session"), -1) == source.getId())
+            .findFirst()
+            .orElse(null);
+
+        if (sourceTranscript != null) {
+            com.nexus.service.MemoryService memoryService = new com.nexus.service.MemoryService();
+            String scope = memoryService.currentWorkspaceScope();
+            String tags = "session,transcript:true,session:" + forked.getId() + ",fork_of:" + source.getId() + ",fork_seed:true";
+            String content = sourceTranscript.getContent() == null ? "" : sourceTranscript.getContent().trim();
+            memoryService.storeScoped(user.getId(), scope, content, tags, MemoryType.EPISODE, 180, false);
+        }
+
+        TerminalUtils.printSuccess("Session forked.");
+        TerminalUtils.printInfo("Source #" + source.getId() + " -> New #" + forked.getId());
+    }
+
+    private void sessionRewind(User user, Map<String, String> flags) {
+        int sessionId = Integer.parseInt(require(flags, "--id", "Missing --id for session rewind"));
+        int turn = Integer.parseInt(require(flags, "--turn", "Missing --turn for session rewind"));
+
+        List<Memory> transcripts = loadSessionTranscripts(user.getId());
+        Memory source = transcripts.stream()
+            .filter(m -> parseIntOrDefault(tagValue(m.getTags(), "session"), -1) == sessionId)
+            .findFirst()
+            .orElseThrow(() -> new IllegalArgumentException("No transcript found for session #" + sessionId));
+
+        String full = source.getContent() == null ? "" : source.getContent();
+        String rewound = rewindTranscript(full, turn);
+        if (rewound.isBlank()) {
+            throw new IllegalArgumentException("Could not rewind transcript to turn " + turn + ".");
+        }
+
+        com.nexus.service.MemoryService memoryService = new com.nexus.service.MemoryService();
+        String scope = memoryService.currentWorkspaceScope();
+        String tags = "session,transcript:true,session:" + sessionId + ",rewind:true,rewind_turn:" + turn + ",rewind_from:" + source.getId();
+        Memory saved = memoryService.storeScoped(user.getId(), scope, rewound, tags, MemoryType.EPISODE, 180, false);
+
+        TerminalUtils.printSuccess("Rewind checkpoint stored.");
+        TerminalUtils.printInfo("Session #" + sessionId + " rewound to turn " + turn + " in memory #" + saved.getId());
+    }
+
+    private void sessionExport(User user, Map<String, String> flags) {
+        List<Memory> transcripts = loadSessionTranscripts(user.getId());
+        if (transcripts.isEmpty()) {
+            TerminalUtils.printInfo("No transcripts to export.");
+            return;
+        }
+
+        Memory selected = selectTranscriptMemory(transcripts, flags, true);
+        if (selected == null) {
+            TerminalUtils.printInfo("No matching transcript found for export.");
+            return;
+        }
+
+        int sessionId = parseIntOrDefault(tagValue(selected.getTags(), "session"), -1);
+        String format = flags.getOrDefault("--format", "markdown").trim().toLowerCase(Locale.ROOT);
+        if (format.equals("md")) format = "markdown";
+        if (format.equals("txt")) format = "text";
+        if (!format.equals("markdown") && !format.equals("text") && !format.equals("json")) {
+            throw new IllegalArgumentException("Unsupported --format. Use markdown|text|json.");
+        }
+
+        String extension = format.equals("json") ? ".json" : format.equals("text") ? ".txt" : ".md";
+        String defaultPath = "target/session/session-" + (sessionId > 0 ? sessionId : "unknown") + extension;
+        Path output = resolvePath(flags.getOrDefault("--output", defaultPath));
+
+        String transcript = selected.getContent() == null ? "" : selected.getContent().trim();
+        String payload;
+        if (format.equals("json")) {
+            StringBuilder json = new StringBuilder();
+            json.append("{\n");
+            json.append("  \"sessionId\": ").append(sessionId).append(",\n");
+            json.append("  \"memoryId\": ").append(selected.getId()).append(",\n");
+            json.append("  \"tags\": \"")
+                .append(jsonEscape(selected.getTags() == null ? "" : selected.getTags()))
+                .append("\",\n");
+            json.append("  \"transcript\": \"")
+                .append(jsonEscape(transcript))
+                .append("\"\n");
+            json.append("}\n");
+            payload = json.toString();
+        } else {
+            payload = transcript;
+        }
+
+        try {
+            if (output.getParent() != null && !Files.exists(output.getParent())) {
+                Files.createDirectories(output.getParent());
+            }
+            Files.writeString(output, payload, StandardCharsets.UTF_8);
+        } catch (IOException ioe) {
+            throw new RuntimeException("Could not export transcript: " + ioe.getMessage(), ioe);
+        }
+
+        TerminalUtils.printSuccess("Session transcript exported.");
+        TerminalUtils.printInfo("Session #" + sessionId + " -> " + output);
+    }
+
+    private List<Memory> loadSessionTranscripts(int userId) {
+        com.nexus.service.MemoryService memoryService = new com.nexus.service.MemoryService();
+        return memoryService.getByType(userId, MemoryType.EPISODE).stream()
+            .filter(m -> hasTag(m.getTags(), "transcript:true"))
+            .filter(m -> parseIntOrDefault(tagValue(m.getTags(), "session"), -1) > 0)
+            .sorted(this::compareMemoriesNewestFirst)
+            .toList();
+    }
+
+    private Memory selectTranscriptMemory(List<Memory> transcripts, Map<String, String> flags, boolean defaultLatest) {
+        if (transcripts == null || transcripts.isEmpty()) return null;
+
+        String idRaw = flags.get("--id");
+        String search = flags.get("--search");
+        if (idRaw != null && !idRaw.isBlank()) {
+            int sessionId = parseIntOrDefault(idRaw, -1);
+            if (sessionId > 0) {
+                return transcripts.stream()
+                    .filter(m -> parseIntOrDefault(tagValue(m.getTags(), "session"), -1) == sessionId)
+                    .findFirst()
+                    .orElse(null);
+            }
+        }
+
+        if (search != null && !search.isBlank()) {
+            String q = search.toLowerCase(Locale.ROOT);
+            return transcripts.stream()
+                .filter(m -> (m.getContent() != null && m.getContent().toLowerCase(Locale.ROOT).contains(q))
+                    || (m.getTags() != null && m.getTags().toLowerCase(Locale.ROOT).contains(q)))
+                .findFirst()
+                .orElse(null);
+        }
+
+        if (defaultLatest || parseBooleanFlag(flags, "--latest", true)) {
+            return transcripts.get(0);
+        }
+
+        return null;
+    }
+
+    private Map<Integer, String> loadSessionTitleIndex(int userId) {
+        com.nexus.service.MemoryService memoryService = new com.nexus.service.MemoryService();
+        Map<Integer, String> titles = new LinkedHashMap<>();
+
+        List<Memory> all = memoryService.getByType(userId, MemoryType.FACT).stream()
+            .filter(m -> hasTag(m.getTags(), "session_meta:true"))
+            .filter(m -> hasTag(m.getTags(), "meta:title"))
+            .sorted(this::compareMemoriesNewestFirst)
+            .toList();
+
+        for (Memory m : all) {
+            int sid = parseIntOrDefault(tagValue(m.getTags(), "session"), -1);
+            if (sid <= 0) continue;
+            if (!titles.containsKey(sid) && m.getContent() != null && !m.getContent().isBlank()) {
+                titles.put(sid, m.getContent().trim());
+            }
+        }
+        return titles;
+    }
+
+    private boolean hasTag(String tags, String target) {
+        if (tags == null || tags.isBlank() || target == null || target.isBlank()) return false;
+        String normalizedTarget = target.trim().toLowerCase(Locale.ROOT);
+        for (String raw : tags.split(",")) {
+            String token = raw == null ? "" : raw.trim().toLowerCase(Locale.ROOT);
+            if (token.equals(normalizedTarget)) return true;
+        }
+        return false;
+    }
+
+    private String transcriptTail(String transcript, int turns) {
+        if (transcript == null || transcript.isBlank()) return "";
+        String[] lines = transcript.split("\\R");
+        int found = 0;
+        int idx = lines.length - 1;
+        for (; idx >= 0; idx--) {
+            String line = lines[idx].trim();
+            if (line.matches("^\\[\\d+]\\s+(User|Assistant):.*")) {
+                found++;
+                if (found >= Math.max(1, turns)) break;
+            }
+        }
+
+        StringBuilder out = new StringBuilder();
+        int start = Math.max(0, idx);
+        for (int i = start; i < lines.length; i++) {
+            out.append(lines[i]).append("\n");
+        }
+        return out.toString().trim();
+    }
+
+    private String rewindTranscript(String transcript, int turn) {
+        if (transcript == null || transcript.isBlank()) return "";
+        if (turn <= 0) return "";
+
+        String[] lines = transcript.split("\\R", -1);
+        int cutIndex = lines.length;
+        for (int i = 0; i < lines.length; i++) {
+            String line = lines[i].trim();
+            if (!line.matches("^\\[(\\d+)]\\s+(User|Assistant):.*")) continue;
+            int startBracket = line.indexOf('[');
+            int endBracket = line.indexOf(']');
+            if (startBracket != 0 || endBracket <= 1) continue;
+            int number = parseIntOrDefault(line.substring(1, endBracket), -1);
+            if (number > turn) {
+                cutIndex = i;
+                break;
+            }
+        }
+
+        StringBuilder out = new StringBuilder();
+        for (int i = 0; i < cutIndex; i++) {
+            out.append(lines[i]).append("\n");
+        }
+        return out.toString().trim();
     }
 
     private void handleFinance(String[] args) {
@@ -521,6 +955,100 @@ public class NexusCommandRunner {
         TerminalUtils.printTable(headers, rows);
     }
 
+    private void handleStatus(String[] args) {
+        Map<String, String> flags = parseFlags(args);
+        User user = authenticate(flags);
+        String scope = profileService.currentWorkspaceScope();
+
+        List<AgentSession> sessions = sessionService.listUserSessions(user.getId());
+        long activeSessions = sessions.stream().filter(AgentSession::isActive).count();
+        List<ApiKey> keys = apiKeyService.listKeysForUser(user.getId());
+        int memories = new com.nexus.service.MemoryService().getAllMemories(user.getId()).size();
+
+        LlmModel modelLane = routingEngine.selectOptimalModelForUser(TaskType.GENERAL_CHAT, Double.MAX_VALUE, user.getId());
+        String lane = modelLane == null ? "No keyed model" : modelLane.getName() + " (" + modelLane.getProvider() + ")";
+
+        TerminalUtils.printSeparator("STATUS");
+        TerminalUtils.printKeyValue("User", user.getUsername());
+        TerminalUtils.printKeyValue("Scope", scope);
+        TerminalUtils.printKeyValue("Model lane", lane);
+        TerminalUtils.printKeyValue("Sessions", sessions.size() + " (active=" + activeSessions + ")");
+        TerminalUtils.printKeyValue("Stored API keys", String.valueOf(keys.size()));
+        TerminalUtils.printKeyValue("Memories", String.valueOf(memories));
+        TerminalUtils.printKeyValue("Version", "2.1.1");
+    }
+
+    private void handleStats(String[] args) {
+        Map<String, String> flags = parseFlags(args);
+        User user = authenticate(flags);
+
+        List<AgentSession> sessions = sessionService.listUserSessions(user.getId());
+        List<OutcomeMemory> outcomes = outcomeDao.findByUserId(user.getId());
+
+        int totalTurnsEstimate = 0;
+        double totalCost = 0.0;
+        for (AgentSession s : sessions) {
+            Integer inTokens = s.getInputTokens();
+            Integer outTokens = s.getOutputTokens();
+            int in = inTokens == null ? 0 : inTokens;
+            int out = outTokens == null ? 0 : outTokens;
+            if (in + out > 0) totalTurnsEstimate++;
+            Double sessionCost = s.getTotalCost();
+            totalCost += sessionCost == null ? 0.0 : sessionCost;
+        }
+
+        double avgQuality = 0.0;
+        if (!outcomes.isEmpty()) {
+            double sum = 0.0;
+            for (OutcomeMemory o : outcomes) {
+                sum += o.getQualityScore();
+            }
+            avgQuality = sum / outcomes.size();
+        }
+
+        TerminalUtils.printSeparator("SESSION STATS");
+        TerminalUtils.printKeyValue("Sessions total", String.valueOf(sessions.size()));
+        TerminalUtils.printKeyValue("Sessions active", String.valueOf(sessions.stream().filter(AgentSession::isActive).count()));
+        TerminalUtils.printKeyValue("Closed outcomes", String.valueOf(outcomes.size()));
+        TerminalUtils.printKeyValue("Estimated turns", String.valueOf(totalTurnsEstimate));
+        TerminalUtils.printKeyValue("Total cost", String.format("$%.6f", totalCost));
+        TerminalUtils.printKeyValue("Avg quality", String.format("%.2f", avgQuality));
+    }
+
+    private void printVersion() {
+        TerminalUtils.printSeparator("VERSION");
+        TerminalUtils.printInfo("Nexus CLI v2.1.1");
+        TerminalUtils.printInfo("Compatibility lane: Claurst-style slash command aliases enabled");
+    }
+
+    private void printUpdate() {
+        TerminalUtils.printSeparator("UPDATE");
+        TerminalUtils.printInfo("Automatic updater is not enabled in this build.");
+        TerminalUtils.printInfo("Current version: 2.1.1");
+        TerminalUtils.printInfo("Check repository for latest changes, then run: git pull ; mvn clean package -DskipTests");
+    }
+
+    private void handleCompatInfo(String command) {
+        String c = command == null ? "" : command.toLowerCase(Locale.ROOT);
+        TerminalUtils.printSeparator("COMPAT: /" + c);
+        switch (c) {
+            case "model" -> TerminalUtils.printInfo("Use: nexus provider list --user <username>  (and provider check/setup for key-aware model access)");
+            case "mcp" -> TerminalUtils.printInfo("Nexus supports tool/provider integrations via: nexus tool list/run and nexus provider setup/check.");
+            case "plugin", "plugins", "marketplace" -> TerminalUtils.printInfo("Plugin marketplace is not yet first-class in Nexus. Closest paths: recipe marketplace + workflow macros.");
+            case "skills" -> TerminalUtils.printInfo("Use recipe/workflow abstractions: nexus recipe marketplace --action list, nexus workflow list.");
+            case "hooks" -> TerminalUtils.printInfo("Lifecycle hooks are not first-class yet. Use policy simulate + workflow macros for controlled automation.");
+            case "permissions" -> TerminalUtils.printInfo("Use profile policies: nexus profile list/set and policy simulator: nexus policy simulate --command \"...\"");
+            case "theme", "statusline", "vim", "voice", "terminal-setup" -> TerminalUtils.printInfo("Terminal UX toggles are interactive-only at present; command mode keeps stable defaults.");
+            case "agents", "tasks" -> TerminalUtils.printInfo("Use: nexus workflow list/run, nexus storyboard show, and session commands for task/session orchestration.");
+            case "plan", "ultraplan" -> TerminalUtils.printInfo("Use: nexus policy simulate + trust evaluate + workflow run --name ship for plan-first execution.");
+            case "search", "files", "context" -> TerminalUtils.printInfo("Use: nexus tool run --name fs.read / shell.exec (policy-gated), memory recall/timeline, and storyboard for context tracing.");
+            case "review", "security-review", "commit", "diff", "undo", "init" -> TerminalUtils.printInfo("Use: nexus pr prep, smoke run, and workflow macros for code-review/release safety checks.");
+            case "brief", "summary" -> TerminalUtils.printInfo("Use: nexus status, nexus stats, or nexus finance report for concise operational summaries.");
+            case "login", "logout", "refresh" -> TerminalUtils.printInfo("Use provider key setup/check flows: nexus provider setup/check/list.");
+            default -> TerminalUtils.printInfo("No direct compat binding yet for /" + c + ". Use: nexus help.");
+        }
+    }
+
     private void printCommandHelp() {
         TerminalUtils.printHelp();
         TerminalUtils.printSeparator("COMMAND NAVIGATOR");
@@ -530,6 +1058,11 @@ public class NexusCommandRunner {
             {"Access", "nexus provider setup --user <username> --provider GROQ --from-env true", "Securely import provider key then run health check"},
             {"Memory", "nexus memory recall --user <username> --query \"...\"", "Find scoped + global memories"},
             {"Chat", "nexus chat --user <username> [--continue|--parent-chat <id|latest>]", "Pinned-model chat loop with parent continuation + auto-summary"},
+            {"MCP", "nexus mcp list --user <username>", "Register/list MCP endpoints for compatibility workflows"},
+            {"Plugins", "nexus plugin list --user <username>", "Install/enable local plugin registry entries"},
+            {"Hooks", "nexus hooks list --user <username>", "Define hook rules for lifecycle automation"},
+            {"Permissions", "nexus permissions list --user <username>", "Allow/deny/reset tool execution policies"},
+            {"Skills", "nexus skills list --user <username>", "Toggle built-in skill packs for workflows"},
             {"Generation", "nexus codegen run --user <username> --prompt \"...\" --output <file>", "Generate files with strict-code on by default"},
             {"Policies", "nexus policy simulate --user <username> --command \"...\"", "Preview allow/deny before execution"},
             {"Reliability", "nexus onboard --user <username> --provider GROQ --mode balanced", "Run wizard + doctor + provider + smoke with readiness score"},
@@ -538,6 +1071,7 @@ public class NexusCommandRunner {
         };
         TerminalUtils.printTable(headers, rows);
         TerminalUtils.printInfo("Tip: run 'nexus suggest --user <username> --prefix cod' for smart command autocomplete.");
+        TerminalUtils.printInfo("Claurst compatibility: slash commands like '/status', '/cost', '/resume', '/export', '/mcp', '/plugin', '/hooks', '/permissions', '/skills', '/agents', '/tasks', '/plan' are accepted in command mode.");
     }
 
     private void handleCall(String[] args) {
@@ -600,7 +1134,7 @@ public class NexusCommandRunner {
 
             transcript.add("User: " + userMsg);
 
-            String assembledPrompt = assembleChatPrompt(task, transcript, userMsg, parentContext);
+            String assembledPrompt = assembleChatPrompt(task, transcript, parentContext);
             TerminalUtils.spinner("Calling LLM...", 300);
             try {
                 ExecutionContextResult execution = executeContextAwareCall(user, model, assembledPrompt);
@@ -812,14 +1346,18 @@ public class NexusCommandRunner {
         LocalDateTime l = left.getCreatedAt();
         LocalDateTime r = right.getCreatedAt();
         if (l == null && r == null) {
-            return Integer.compare(right.getId() == null ? 0 : right.getId(), left.getId() == null ? 0 : left.getId());
+            Integer rightId = right.getId();
+            Integer leftId = left.getId();
+            return Integer.compare(rightId == null ? 0 : rightId, leftId == null ? 0 : leftId);
         }
         if (l == null) return 1;
         if (r == null) return -1;
 
         int byTime = r.compareTo(l);
         if (byTime != 0) return byTime;
-        return Integer.compare(right.getId() == null ? 0 : right.getId(), left.getId() == null ? 0 : left.getId());
+        Integer rightId = right.getId();
+        Integer leftId = left.getId();
+        return Integer.compare(rightId == null ? 0 : rightId, leftId == null ? 0 : leftId);
     }
 
     private TaskType resolveChatTask(Map<String, String> flags) {
@@ -901,7 +1439,7 @@ public class NexusCommandRunner {
         return routed;
     }
 
-    private String assembleChatPrompt(TaskType task, List<String> transcript, String userMsg, ParentChatContext parentContext) {
+    private String assembleChatPrompt(TaskType task, List<String> transcript, ParentChatContext parentContext) {
         int maxTurns = 14; // in-memory only
         int maxCharsPerTurn = 1200;
         int start = Math.max(0, transcript.size() - (maxTurns * 2));
@@ -2503,6 +3041,564 @@ public class NexusCommandRunner {
         suggestCommands(user, flags);
     }
 
+    private void handleMcp(String[] args) {
+        String action = args.length == 0 ? "list" : args[0].toLowerCase(Locale.ROOT);
+        Map<String, String> flags = parseFlags(args.length == 0 ? args : Arrays.copyOfRange(args, 1, args.length));
+        authenticate(flags);
+
+        List<McpEntry> entries = loadMcpEntries();
+        switch (action) {
+            case "list", "status" -> {
+                if (entries.isEmpty()) {
+                    TerminalUtils.printInfo("No MCP servers configured.");
+                    TerminalUtils.printInfo("Add one: nexus mcp add --name filesystem --command npx --args \"-y @modelcontextprotocol/server-filesystem .\"");
+                    return;
+                }
+                String[] headers = {"Name", "Type", "Command/URL", "Args"};
+                String[][] rows = new String[entries.size()][4];
+                for (int i = 0; i < entries.size(); i++) {
+                    McpEntry e = entries.get(i);
+                    rows[i] = new String[] {
+                        e.name(),
+                        e.type(),
+                        e.type().equals("http") ? e.url() : e.command(),
+                        truncate(e.args(), 60)
+                    };
+                }
+                TerminalUtils.printSeparator("MCP SERVERS");
+                TerminalUtils.printTable(headers, rows);
+            }
+            case "add" -> {
+                String name = require(flags, "--name", "Missing --name for mcp add");
+                String type = flags.getOrDefault("--type", "stdio").toLowerCase(Locale.ROOT);
+                String command = flags.getOrDefault("--command", "");
+                String argsRaw = flags.getOrDefault("--args", "");
+                String url = flags.getOrDefault("--url", "");
+
+                if (!type.equals("stdio") && !type.equals("http")) {
+                    throw new IllegalArgumentException("MCP --type must be stdio or http");
+                }
+                if (type.equals("stdio") && command.isBlank()) {
+                    throw new IllegalArgumentException("MCP stdio server requires --command");
+                }
+                if (type.equals("http") && url.isBlank()) {
+                    throw new IllegalArgumentException("MCP http server requires --url");
+                }
+
+                List<McpEntry> updated = new ArrayList<>();
+                boolean replaced = false;
+                for (McpEntry e : entries) {
+                    if (e.name().equalsIgnoreCase(name.trim())) {
+                        updated.add(new McpEntry(name.trim(), type, command.trim(), argsRaw.trim(), url.trim()));
+                        replaced = true;
+                    } else {
+                        updated.add(e);
+                    }
+                }
+                if (!replaced) {
+                    updated.add(new McpEntry(name.trim(), type, command.trim(), argsRaw.trim(), url.trim()));
+                }
+                saveMcpEntries(updated);
+                TerminalUtils.printSuccess("MCP server " + (replaced ? "updated" : "added") + ": " + name.trim());
+            }
+            case "remove" -> {
+                String name = require(flags, "--name", "Missing --name for mcp remove");
+                List<McpEntry> updated = entries.stream()
+                    .filter(e -> !e.name().equalsIgnoreCase(name.trim()))
+                    .toList();
+                if (updated.size() == entries.size()) {
+                    TerminalUtils.printInfo("No MCP server named '" + name.trim() + "' found.");
+                    return;
+                }
+                saveMcpEntries(updated);
+                TerminalUtils.printSuccess("MCP server removed: " + name.trim());
+            }
+            case "restart", "connect", "disconnect" -> {
+                String name = require(flags, "--name", "Missing --name for mcp " + action);
+                boolean exists = entries.stream().anyMatch(e -> e.name().equalsIgnoreCase(name.trim()));
+                if (!exists) {
+                    TerminalUtils.printError("MCP server not found: " + name.trim());
+                    return;
+                }
+                TerminalUtils.printSuccess("MCP " + action + " simulated for server: " + name.trim());
+            }
+            default -> TerminalUtils.printInfo("Usage: nexus mcp list|add|remove|restart|connect|disconnect --user <username> ...");
+        }
+    }
+
+    private void handlePlugin(String[] args) {
+        String action = args.length == 0 ? "list" : args[0].toLowerCase(Locale.ROOT);
+        Map<String, String> flags = parseFlags(args.length == 0 ? args : Arrays.copyOfRange(args, 1, args.length));
+        authenticate(flags);
+
+        List<PluginEntry> entries = loadPluginEntries();
+        switch (action) {
+            case "list" -> {
+                if (entries.isEmpty()) {
+                    TerminalUtils.printInfo("No plugins installed.");
+                    TerminalUtils.printInfo("Install: nexus plugin install --name author/plugin");
+                    return;
+                }
+                String[] headers = {"Plugin", "Enabled", "Source", "Installed"};
+                String[][] rows = new String[entries.size()][4];
+                for (int i = 0; i < entries.size(); i++) {
+                    PluginEntry e = entries.get(i);
+                    rows[i] = new String[] {
+                        e.name(),
+                        e.enabled() ? TerminalUtils.GREEN + "YES" + TerminalUtils.RESET : TerminalUtils.YELLOW + "NO" + TerminalUtils.RESET,
+                        truncate(e.source(), 46),
+                        e.installedAt()
+                    };
+                }
+                TerminalUtils.printSeparator("PLUGINS");
+                TerminalUtils.printTable(headers, rows);
+            }
+            case "install" -> {
+                String name = flags.get("--name");
+                String path = flags.get("--path");
+                if ((name == null || name.isBlank()) && (path == null || path.isBlank())) {
+                    throw new IllegalArgumentException("Missing --name or --path for plugin install");
+                }
+                String pluginName;
+                String source;
+                if (name != null && !name.isBlank()) {
+                    pluginName = name.trim();
+                    source = "marketplace:" + pluginName;
+                } else {
+                    Path p = resolvePath(path);
+                    if (!Files.exists(p)) {
+                        throw new IllegalArgumentException("Plugin path does not exist: " + p);
+                    }
+                    pluginName = p.getFileName() == null ? "plugin" : p.getFileName().toString();
+                    source = "path:" + p.toAbsolutePath();
+                }
+
+                List<PluginEntry> updated = new ArrayList<>();
+                boolean replaced = false;
+                for (PluginEntry e : entries) {
+                    if (e.name().equalsIgnoreCase(pluginName)) {
+                        updated.add(new PluginEntry(pluginName, source, true, LocalDateTime.now().toString()));
+                        replaced = true;
+                    } else {
+                        updated.add(e);
+                    }
+                }
+                if (!replaced) {
+                    updated.add(new PluginEntry(pluginName, source, true, LocalDateTime.now().toString()));
+                }
+                savePluginEntries(updated);
+                TerminalUtils.printSuccess("Plugin " + (replaced ? "updated" : "installed") + ": " + pluginName);
+            }
+            case "remove" -> {
+                String name = require(flags, "--name", "Missing --name for plugin remove");
+                List<PluginEntry> updated = entries.stream()
+                    .filter(e -> !e.name().equalsIgnoreCase(name.trim()))
+                    .toList();
+                if (updated.size() == entries.size()) {
+                    TerminalUtils.printInfo("Plugin not found: " + name.trim());
+                    return;
+                }
+                savePluginEntries(updated);
+                TerminalUtils.printSuccess("Plugin removed: " + name.trim());
+            }
+            case "enable", "disable" -> {
+                String name = require(flags, "--name", "Missing --name for plugin " + action);
+                boolean enable = action.equals("enable");
+                List<PluginEntry> updated = new ArrayList<>();
+                boolean changed = false;
+                for (PluginEntry e : entries) {
+                    if (e.name().equalsIgnoreCase(name.trim())) {
+                        updated.add(new PluginEntry(e.name(), e.source(), enable, e.installedAt()));
+                        changed = true;
+                    } else {
+                        updated.add(e);
+                    }
+                }
+                if (!changed) {
+                    TerminalUtils.printInfo("Plugin not found: " + name.trim());
+                    return;
+                }
+                savePluginEntries(updated);
+                TerminalUtils.printSuccess("Plugin " + (enable ? "enabled" : "disabled") + ": " + name.trim());
+            }
+            case "reload" -> {
+                TerminalUtils.printSuccess("Plugins reloaded from registry.");
+                TerminalUtils.printInfo("Installed plugins: " + entries.size());
+            }
+            case "info" -> {
+                String name = require(flags, "--name", "Missing --name for plugin info");
+                PluginEntry plugin = entries.stream()
+                    .filter(e -> e.name().equalsIgnoreCase(name.trim()))
+                    .findFirst()
+                    .orElse(null);
+                if (plugin == null) {
+                    TerminalUtils.printInfo("Plugin not found: " + name.trim());
+                    return;
+                }
+                TerminalUtils.printSeparator("PLUGIN INFO");
+                TerminalUtils.printKeyValue("Name", plugin.name());
+                TerminalUtils.printKeyValue("Enabled", String.valueOf(plugin.enabled()));
+                TerminalUtils.printKeyValue("Source", plugin.source());
+                TerminalUtils.printKeyValue("Installed", plugin.installedAt());
+            }
+            default -> TerminalUtils.printInfo("Usage: nexus plugin list|install|remove|enable|disable|reload|info --user <username> ...");
+        }
+    }
+
+    private void handleHooks(String[] args) {
+        String action = args.length == 0 ? "list" : args[0].toLowerCase(Locale.ROOT);
+        Map<String, String> flags = parseFlags(args.length == 0 ? args : Arrays.copyOfRange(args, 1, args.length));
+        authenticate(flags);
+
+        List<HookRuleEntry> hooks = loadHookEntries();
+        switch (action) {
+            case "list" -> {
+                if (hooks.isEmpty()) {
+                    TerminalUtils.printInfo("No hooks configured.");
+                    TerminalUtils.printInfo("Add one: nexus hooks add --event SessionStart --command \"echo hello\"");
+                    return;
+                }
+                String[] headers = {"ID", "Event", "Blocking", "Command"};
+                String[][] rows = new String[hooks.size()][4];
+                for (int i = 0; i < hooks.size(); i++) {
+                    HookRuleEntry h = hooks.get(i);
+                    rows[i] = new String[] {
+                        h.id(),
+                        h.event(),
+                        h.blocking() ? "true" : "false",
+                        truncate(h.command(), 80)
+                    };
+                }
+                TerminalUtils.printSeparator("HOOKS");
+                TerminalUtils.printTable(headers, rows);
+            }
+            case "add" -> {
+                String event = require(flags, "--event", "Missing --event for hooks add");
+                String command = require(flags, "--command", "Missing --command for hooks add");
+                boolean blocking = parseBooleanFlag(flags, "--blocking", false);
+                String id = "hk-" + UUID.randomUUID().toString().substring(0, 6);
+
+                List<HookRuleEntry> updated = new ArrayList<>(hooks);
+                updated.add(new HookRuleEntry(id, event.trim(), command.trim(), blocking));
+                saveHookEntries(updated);
+                TerminalUtils.printSuccess("Hook added: " + id + " (" + event.trim() + ")");
+            }
+            case "remove" -> {
+                String id = require(flags, "--id", "Missing --id for hooks remove");
+                List<HookRuleEntry> updated = hooks.stream()
+                    .filter(h -> !h.id().equalsIgnoreCase(id.trim()))
+                    .toList();
+                if (updated.size() == hooks.size()) {
+                    TerminalUtils.printInfo("Hook not found: " + id.trim());
+                    return;
+                }
+                saveHookEntries(updated);
+                TerminalUtils.printSuccess("Hook removed: " + id.trim());
+            }
+            default -> TerminalUtils.printInfo("Usage: nexus hooks list|add|remove --user <username> ...");
+        }
+    }
+
+    private void handlePermissions(String[] args) {
+        String action = args.length == 0 ? "list" : args[0].toLowerCase(Locale.ROOT);
+        Map<String, String> flags = parseFlags(args.length == 0 ? args : Arrays.copyOfRange(args, 1, args.length));
+        User user = authenticate(flags);
+        String scope = profileService.currentWorkspaceScope();
+
+        Map<String, String> toolPolicyKey = Map.of(
+            "fs.read", "policy.allow_tool_fs_read",
+            "fs.write", "policy.allow_tool_fs_write",
+            "shell.exec", "policy.allow_tool_shell"
+        );
+
+        switch (action) {
+            case "list" -> {
+                String[] headers = {"Tool", "Policy key", "Allowed"};
+                String[][] rows = new String[toolPolicyKey.size()][3];
+                int i = 0;
+                for (var entry : toolPolicyKey.entrySet()) {
+                    boolean allowed = profileService.getBooleanSetting(user.getId(), scope, entry.getValue(), entry.getKey().equals("fs.read") || entry.getKey().equals("fs.write"));
+                    rows[i++] = new String[] {
+                        entry.getKey(),
+                        entry.getValue(),
+                        allowed ? TerminalUtils.GREEN + "ALLOW" + TerminalUtils.RESET : TerminalUtils.RED + "DENY" + TerminalUtils.RESET
+                    };
+                }
+                TerminalUtils.printSeparator("PERMISSIONS");
+                TerminalUtils.printTable(headers, rows);
+            }
+            case "allow", "deny" -> {
+                String tool = require(flags, "--tool", "Missing --tool for permissions " + action).trim().toLowerCase(Locale.ROOT);
+                String policyKey = toolPolicyKey.get(tool);
+                if (policyKey == null) {
+                    throw new IllegalArgumentException("Unsupported tool. Use fs.read|fs.write|shell.exec");
+                }
+                boolean allow = action.equals("allow");
+                profileService.setSetting(user.getId(), scope, policyKey, String.valueOf(allow));
+                TerminalUtils.printSuccess("Permission updated: " + tool + " -> " + (allow ? "ALLOW" : "DENY"));
+            }
+            case "reset" -> {
+                profileService.setSetting(user.getId(), scope, "policy.allow_tool_fs_read", "true");
+                profileService.setSetting(user.getId(), scope, "policy.allow_tool_fs_write", "true");
+                profileService.setSetting(user.getId(), scope, "policy.allow_tool_shell", "false");
+                TerminalUtils.printSuccess("Permissions reset to balanced defaults.");
+            }
+            default -> TerminalUtils.printInfo("Usage: nexus permissions list|allow|deny|reset --user <username> [--tool fs.read|fs.write|shell.exec]");
+        }
+    }
+
+    private void handleSkills(String[] args) {
+        String action = args.length == 0 ? "list" : args[0].toLowerCase(Locale.ROOT);
+        Map<String, String> flags = parseFlags(args.length == 0 ? args : Arrays.copyOfRange(args, 1, args.length));
+        User user = authenticate(flags);
+        String scope = profileService.currentWorkspaceScope();
+
+        List<String> builtins = List.of("recipe.marketplace", "workflow.ship", "workflow.hotfix", "workflow.release-notes", "policy.simulate", "trust.evaluate");
+        Set<String> disabled = new LinkedHashSet<>();
+        String disabledRaw = profileService.listSettings(user.getId(), scope, true).getOrDefault("skills.disabled", "");
+        if (!disabledRaw.isBlank()) {
+            for (String token : disabledRaw.split(",")) {
+                String t = token.trim();
+                if (!t.isBlank()) disabled.add(t.toLowerCase(Locale.ROOT));
+            }
+        }
+
+        switch (action) {
+            case "list" -> {
+                String[] headers = {"Skill", "Enabled"};
+                String[][] rows = new String[builtins.size()][2];
+                for (int i = 0; i < builtins.size(); i++) {
+                    String s = builtins.get(i);
+                    boolean enabled = !disabled.contains(s.toLowerCase(Locale.ROOT));
+                    rows[i] = new String[] {
+                        s,
+                        enabled ? TerminalUtils.GREEN + "YES" + TerminalUtils.RESET : TerminalUtils.YELLOW + "NO" + TerminalUtils.RESET
+                    };
+                }
+                TerminalUtils.printSeparator("SKILLS");
+                TerminalUtils.printTable(headers, rows);
+            }
+            case "enable", "disable" -> {
+                String name = require(flags, "--name", "Missing --name for skills " + action).trim().toLowerCase(Locale.ROOT);
+                if (action.equals("enable")) disabled.remove(name);
+                else disabled.add(name);
+                if (disabled.isEmpty()) {
+                    profileService.deleteSetting(user.getId(), scope, "skills.disabled");
+                } else {
+                    profileService.setSetting(user.getId(), scope, "skills.disabled", String.join(",", disabled));
+                }
+                TerminalUtils.printSuccess("Skill " + action + "d: " + name);
+            }
+            case "reload" -> {
+                TerminalUtils.printSuccess("Skills reloaded.");
+                TerminalUtils.printInfo("Use 'nexus skills list --user <username>' to inspect state.");
+            }
+            default -> TerminalUtils.printInfo("Usage: nexus skills list|enable|disable|reload --user <username> [--name <skill>]");
+        }
+    }
+
+    private void handleAgents(String[] args) {
+        Map<String, String> flags = parseFlags(args);
+        authenticate(flags);
+
+        String[] headers = {"Agent", "Access", "Turns", "Role"};
+        String[][] rows = {
+            {"build", "full", "unlimited", "implementation"},
+            {"plan", "read-only", "20", "analysis/planning"},
+            {"explore", "search-only", "15", "codebase exploration"}
+        };
+        TerminalUtils.printSeparator("AGENTS");
+        TerminalUtils.printTable(headers, rows);
+        TerminalUtils.printInfo("Use workflow macros + session/task commands to emulate coordinator loops.");
+    }
+
+    private void handleTasks(String[] args) {
+        String action = args.length == 0 ? "list" : args[0].toLowerCase(Locale.ROOT);
+        Map<String, String> flags = parseFlags(args.length == 0 ? args : Arrays.copyOfRange(args, 1, args.length));
+        User user = authenticate(flags);
+
+        switch (action) {
+            case "list" -> {
+                List<AgentSession> active = sessionService.listActiveSessions(user.getId());
+                if (active.isEmpty()) {
+                    TerminalUtils.printInfo("No active tasks/sessions.");
+                    return;
+                }
+                String[] headers = {"Task ID", "Task Type", "Model", "Created", "Status"};
+                String[][] rows = new String[active.size()][5];
+                for (int i = 0; i < active.size(); i++) {
+                    AgentSession s = active.get(i);
+                    String model = modelDao.read(s.getModelId()).map(LlmModel::getName).orElse("model#" + s.getModelId());
+                    rows[i] = new String[] {
+                        String.valueOf(s.getId()),
+                        s.getTaskType().name(),
+                        model,
+                        s.getCreatedAt() == null ? "-" : s.getCreatedAt().toString(),
+                        "ACTIVE"
+                    };
+                }
+                TerminalUtils.printSeparator("TASKS");
+                TerminalUtils.printTable(headers, rows);
+            }
+            case "stop" -> {
+                int id = Integer.parseInt(require(flags, "--id", "Missing --id for tasks stop"));
+                AgentSession closed = sessionService.closeSession(user.getId(), id, 0, 0, 0.75, "Stopped via tasks stop");
+                TerminalUtils.printSuccess("Task stopped/session closed: #" + closed.getId());
+            }
+            case "output" -> {
+                int id = Integer.parseInt(require(flags, "--id", "Missing --id for tasks output"));
+                AgentSession session = sessionService.listUserSessions(user.getId()).stream()
+                    .filter(s -> s.getId().equals(id))
+                    .findFirst()
+                    .orElseThrow(() -> new IllegalArgumentException("Session not found: #" + id));
+                TerminalUtils.printSeparator("TASK OUTPUT");
+                TerminalUtils.printInfo("Session #" + session.getId() + " | " + session.getTaskType() + " | " + (session.isActive() ? "ACTIVE" : "CLOSED"));
+                System.out.println(session.getNotes() == null || session.getNotes().isBlank() ? "(no notes)" : session.getNotes());
+            }
+            default -> TerminalUtils.printInfo("Usage: nexus tasks list|stop|output --user <username> [--id <sessionId>]");
+        }
+    }
+
+    private void handlePlanCompat(String command, String[] args) {
+        Map<String, String> flags = parseFlags(args);
+        User user = authenticate(flags);
+        String scope = profileService.currentWorkspaceScope();
+
+        String modeArg = args.length == 0 ? "on" : args[0].trim().toLowerCase(Locale.ROOT);
+        boolean enablePlan = !modeArg.equals("off") && !modeArg.equals("disable");
+
+        if (enablePlan) {
+            profileService.setSetting(user.getId(), scope, "policy.allow_file_write", "false");
+            profileService.setSetting(user.getId(), scope, "policy.allow_tool_shell", "false");
+            profileService.setSetting(user.getId(), scope, "plan.mode", command.equals("ultraplan") ? "ultra" : "on");
+            TerminalUtils.printSuccess("Plan mode enabled.");
+            TerminalUtils.printInfo("Write + shell operations are restricted in this scope.");
+        } else {
+            profileService.setSetting(user.getId(), scope, "policy.allow_file_write", "true");
+            profileService.setSetting(user.getId(), scope, "policy.allow_tool_shell", "false");
+            profileService.deleteSetting(user.getId(), scope, "plan.mode");
+            TerminalUtils.printSuccess("Plan mode disabled.");
+            TerminalUtils.printInfo("Restored balanced write/shell policy defaults for this scope.");
+        }
+    }
+
+    private Path ensureCompatConfigDir() {
+        Path dir = resolvePath("target/nexus-config");
+        try {
+            if (!Files.exists(dir)) {
+                Files.createDirectories(dir);
+            }
+        } catch (IOException e) {
+            throw new RuntimeException("Could not initialize compat config directory: " + e.getMessage(), e);
+        }
+        return dir;
+    }
+
+    private List<McpEntry> loadMcpEntries() {
+        Path file = ensureCompatConfigDir().resolve("mcp.db");
+        if (!Files.exists(file)) return new ArrayList<>();
+        try {
+            List<McpEntry> out = new ArrayList<>();
+            for (String line : Files.readAllLines(file, StandardCharsets.UTF_8)) {
+                String row = line == null ? "" : line.trim();
+                if (row.isBlank() || row.startsWith("#")) continue;
+                String[] parts = row.split("\\|", -1);
+                if (parts.length < 5) continue;
+                out.add(new McpEntry(parts[0], parts[1], parts[2], parts[3], parts[4]));
+            }
+            return out;
+        } catch (IOException e) {
+            throw new RuntimeException("Could not read MCP registry: " + e.getMessage(), e);
+        }
+    }
+
+    private void saveMcpEntries(List<McpEntry> entries) {
+        Path file = ensureCompatConfigDir().resolve("mcp.db");
+        List<String> lines = new ArrayList<>();
+        lines.add("# name|type|command|args|url");
+        for (McpEntry e : entries) {
+            lines.add(String.join("|", sanitizeDb(e.name()), sanitizeDb(e.type()), sanitizeDb(e.command()), sanitizeDb(e.args()), sanitizeDb(e.url())));
+        }
+        try {
+            Files.write(file, lines, StandardCharsets.UTF_8);
+        } catch (IOException e) {
+            throw new RuntimeException("Could not save MCP registry: " + e.getMessage(), e);
+        }
+    }
+
+    private List<PluginEntry> loadPluginEntries() {
+        Path file = ensureCompatConfigDir().resolve("plugins.db");
+        if (!Files.exists(file)) return new ArrayList<>();
+        try {
+            List<PluginEntry> out = new ArrayList<>();
+            for (String line : Files.readAllLines(file, StandardCharsets.UTF_8)) {
+                String row = line == null ? "" : line.trim();
+                if (row.isBlank() || row.startsWith("#")) continue;
+                String[] parts = row.split("\\|", -1);
+                if (parts.length < 4) continue;
+                out.add(new PluginEntry(parts[0], parts[1], parseBooleanToken(parts[2]), parts[3]));
+            }
+            return out;
+        } catch (IOException e) {
+            throw new RuntimeException("Could not read plugin registry: " + e.getMessage(), e);
+        }
+    }
+
+    private void savePluginEntries(List<PluginEntry> entries) {
+        Path file = ensureCompatConfigDir().resolve("plugins.db");
+        List<String> lines = new ArrayList<>();
+        lines.add("# name|source|enabled|installed_at");
+        for (PluginEntry e : entries) {
+            lines.add(String.join("|", sanitizeDb(e.name()), sanitizeDb(e.source()), String.valueOf(e.enabled()), sanitizeDb(e.installedAt())));
+        }
+        try {
+            Files.write(file, lines, StandardCharsets.UTF_8);
+        } catch (IOException e) {
+            throw new RuntimeException("Could not save plugin registry: " + e.getMessage(), e);
+        }
+    }
+
+    private List<HookRuleEntry> loadHookEntries() {
+        Path file = ensureCompatConfigDir().resolve("hooks.db");
+        if (!Files.exists(file)) return new ArrayList<>();
+        try {
+            List<HookRuleEntry> out = new ArrayList<>();
+            for (String line : Files.readAllLines(file, StandardCharsets.UTF_8)) {
+                String row = line == null ? "" : line.trim();
+                if (row.isBlank() || row.startsWith("#")) continue;
+                String[] parts = row.split("\\|", -1);
+                if (parts.length < 4) continue;
+                out.add(new HookRuleEntry(parts[0], parts[1], parts[2], parseBooleanToken(parts[3])));
+            }
+            return out;
+        } catch (IOException e) {
+            throw new RuntimeException("Could not read hooks registry: " + e.getMessage(), e);
+        }
+    }
+
+    private void saveHookEntries(List<HookRuleEntry> entries) {
+        Path file = ensureCompatConfigDir().resolve("hooks.db");
+        List<String> lines = new ArrayList<>();
+        lines.add("# id|event|command|blocking");
+        for (HookRuleEntry e : entries) {
+            lines.add(String.join("|", sanitizeDb(e.id()), sanitizeDb(e.event()), sanitizeDb(e.command()), String.valueOf(e.blocking())));
+        }
+        try {
+            Files.write(file, lines, StandardCharsets.UTF_8);
+        } catch (IOException e) {
+            throw new RuntimeException("Could not save hooks registry: " + e.getMessage(), e);
+        }
+    }
+
+    private String sanitizeDb(String value) {
+        if (value == null) return "";
+        return value.replace("|", "/").replace("\n", " ").replace("\r", " ").trim();
+    }
+
+    private record McpEntry(String name, String type, String command, String args, String url) {}
+    private record PluginEntry(String name, String source, boolean enabled, String installedAt) {}
+    private record HookRuleEntry(String id, String event, String command, boolean blocking) {}
+
     private void storyboardShow(User user, Map<String, String> flags) {
         int limit = Math.max(5, parseIntOrDefault(flags.get("--limit"), 25));
         List<AuditLog> logs = auditLogDao.findByUserId(user.getId());
@@ -3809,6 +4905,11 @@ public class NexusCommandRunner {
         System.out.println("  nexus session list --user <username>");
         System.out.println("  nexus session start --user <username> --task CODE_GENERATION [--note \"...\"]");
         System.out.println("  nexus session close --user <username> --id <sessionId> --input <n> --output <n> --quality <0..1> [--note \"...\"]");
+        System.out.println("  nexus session resume --user <username> [--id <sessionId>|--search <term>|--latest true] [--tail 10]");
+        System.out.println("  nexus session rename --user <username> --id <sessionId> --title \"New title\"");
+        System.out.println("  nexus session fork --user <username> [--id <sessionId>|--id latest]");
+        System.out.println("  nexus session rewind --user <username> --id <sessionId> --turn <n>");
+        System.out.println("  nexus session export --user <username> [--id <sessionId>|--latest true] [--format markdown|text|json] [--output <path>]");
     }
 
     private void printFinanceHelp() {
