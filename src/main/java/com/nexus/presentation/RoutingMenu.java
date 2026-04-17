@@ -217,18 +217,26 @@ public class RoutingMenu {
                 // We have a key-accessible fallback — use it silently
                 TerminalUtils.printInfo("Switching to: " + best.getName() + " (" + best.getProvider() + ")");
             } else {
-                // No key for any model — offer simulation on the optimal model
-                System.out.println();
-                System.out.print("  No keys configured. Run in SIMULATION mode using "
-                    + optimal.getName() + "? (yes/no): ");
-                String choice = ctx.scanner().nextLine().trim();
-                if (!"yes".equalsIgnoreCase(choice)) {
-                    TerminalUtils.printInfo("Cancelled. Add a key via option 3 in the API Key Vault.");
+                // No task-matched keyed model. Try any key-accessible model across providers.
+                LlmModel fallback = ctx.routingEngine().selectBestKeyAccessibleFallback(task, Double.MAX_VALUE, ctx.userId());
+                if (fallback != null) {
+                    best = fallback;
+                    TerminalUtils.printInfo("No task-matched keyed model found. Falling back to key-accessible model: "
+                        + best.getName() + " (" + best.getProvider() + ")");
+                } else {
+                    // No key for any model — offer simulation on the optimal model
+                    System.out.println();
+                    System.out.print("  No key-accessible model found. Run in SIMULATION mode using "
+                        + optimal.getName() + "? (yes/no): ");
+                    String choice = ctx.scanner().nextLine().trim();
+                    if (!"yes".equalsIgnoreCase(choice)) {
+                        TerminalUtils.printInfo("Cancelled. Add a key via option 3 in the API Key Vault.");
+                        return;
+                    }
+                    // Run simulation on the optimal (no-key) model
+                    runSimulatedCall(task, optimal, prompt);
                     return;
                 }
-                // Run simulation on the optimal (no-key) model
-                runSimulatedCall(task, optimal, prompt);
-                return;
             }
         }
 
@@ -289,14 +297,21 @@ public class RoutingMenu {
             LlmModel optimal = result.optimalWithoutKey();
             TerminalUtils.printWarn("Optimal model " + optimal.getName() + " (" + optimal.getProvider() + ") has no API key.");
             if (best == null) {
-                // Offer simulation session — no real API call possible
-                System.out.print("  No key-accessible model found. Start a SIMULATION session with "
-                    + optimal.getName() + "? (yes/no): ");
-                if (!"yes".equalsIgnoreCase(ctx.scanner().nextLine().trim())) {
-                    TerminalUtils.printInfo("Cancelled. Add a key via the API Key Vault first.");
-                    return;
+                LlmModel fallback = ctx.routingEngine().selectBestKeyAccessibleFallback(task, Double.MAX_VALUE, ctx.userId());
+                if (fallback != null) {
+                    best = fallback;
+                    TerminalUtils.printInfo("No task-matched keyed model found. Falling back to key-accessible model: "
+                        + best.getName() + " (" + best.getProvider() + ")");
+                } else {
+                    // Offer simulation session — no real API call possible
+                    System.out.print("  No key-accessible model found. Start a SIMULATION session with "
+                        + optimal.getName() + "? (yes/no): ");
+                    if (!"yes".equalsIgnoreCase(ctx.scanner().nextLine().trim())) {
+                        TerminalUtils.printInfo("Cancelled. Add a key via the API Key Vault first.");
+                        return;
+                    }
+                    best = optimal; // Use optimal model in simulation
                 }
-                best = optimal; // Use optimal model in simulation
             } else {
                 TerminalUtils.printInfo("Session will use: " + best.getName() + " (" + best.getProvider() + ")");
             }

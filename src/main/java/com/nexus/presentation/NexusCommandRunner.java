@@ -19,12 +19,10 @@ import java.util.Scanner;
 import java.util.Set;
 import java.util.UUID;
 
+import com.nexus.dao.AuditLogDao;
 import com.nexus.dao.LlmModelDao;
 import com.nexus.dao.OutcomeMemoryDao;
 import com.nexus.dao.SuitabilityDao;
-import com.nexus.dao.AuditLogDao;
-import com.nexus.service.ApiKeyService;
-import com.nexus.service.LlmCallService;
 import com.nexus.domain.AgentSession;
 import com.nexus.domain.ApiKey;
 import com.nexus.domain.AuditLog;
@@ -37,11 +35,13 @@ import com.nexus.domain.Provider;
 import com.nexus.domain.TaskType;
 import com.nexus.domain.User;
 import com.nexus.exception.DaoException;
+import com.nexus.service.ApiKeyService;
+import com.nexus.service.LlmCallService;
+import com.nexus.service.ProfileService;
 import com.nexus.service.RoutingEngine;
 import com.nexus.service.SessionService;
 import com.nexus.service.ToolExecutionService;
 import com.nexus.service.UserService;
-import com.nexus.service.ProfileService;
 import com.nexus.util.TerminalUtils;
 
 /**
@@ -270,7 +270,10 @@ public class NexusCommandRunner {
 
         LlmModel routed = routingEngine.selectOptimalModelForUser(task, Double.MAX_VALUE, user.getId());
         if (routed == null) {
-            throw new IllegalArgumentException("No routable model found for task: " + task);
+            routed = routingEngine.selectBestKeyAccessibleFallback(task, Double.MAX_VALUE, user.getId());
+        }
+        if (routed == null) {
+            throw new IllegalArgumentException("No routable model found for task: " + task + " (no API-key accessible fallback found)");
         }
 
         AgentSession s = sessionService.startSession(user.getId(), task, routed.getId(), note);

@@ -218,6 +218,63 @@ public class RoutingEngine {
         return results;
     }
 
+    /**
+     * Fallback selector when no task-suitable keyed model exists.
+     * Chooses the best model from providers that have a stored API key for this user.
+     */
+    public LlmModel selectBestKeyAccessibleFallback(TaskType preferredTask, double maxCostPer1k, Integer userId) {
+        if (userId == null) return null;
+
+        Set<Provider> accessibleProviders = getAccessibleProviders(userId);
+        if (accessibleProviders.isEmpty()) return null;
+
+        List<LlmModel> models = llmModelDao.findAll();
+        if (models.isEmpty()) return null;
+
+        List<OutcomeMemory> history = outcomeMemoryDao.findByUserId(userId);
+        Map<Integer, List<OutcomeMemory>> histByModel = new HashMap<>();
+        for (OutcomeMemory m : history) {
+            histByModel.computeIfAbsent(m.getModelId(), k -> new ArrayList<>()).add(m);
+        }
+
+        Map<Integer, Double> taskSuitability = new HashMap<>();
+        for (ModelSuitability ms : suitabilityDao.findByTaskType(preferredTask)) {
+            taskSuitability.put(ms.getModelId(), ms.getBaseScore());
+        }
+
+        double maxLatency = history.stream().mapToDouble(OutcomeMemory::getLatencyMs).max().orElse(3000);
+        double maxCost    = models.stream().mapToDouble(LlmModel::getCostPer1kTokens).max().orElse(0.10);
+
+        LlmModel best = null;
+        double bestScore = -1.0;
+
+        for (LlmModel model : models) {
+            if (model.getCostPer1kTokens() > maxCostPer1k) continue;
+
+            Optional<Provider> modelProvider = Provider.fromAny(model.getProvider());
+            if (modelProvider.isEmpty() || !accessibleProviders.contains(modelProvider.get())) continue;
+
+            // If a model lacks explicit suitability for this task, keep it eligible with a conservative prior.
+            double baseScore = taskSuitability.getOrDefault(model.getId(), 0.45);
+            ModelSuitability syntheticSuitability = new ModelSuitability(
+                null,
+                model.getId(),
+                preferredTask,
+                baseScore,
+                null
+            );
+
+            List<OutcomeMemory> modelHist = histByModel.getOrDefault(model.getId(), new ArrayList<>());
+            double composite = computeComposite(syntheticSuitability, model, modelHist, maxLatency, maxCost);
+            if (composite > bestScore) {
+                bestScore = composite;
+                best = model;
+            }
+        }
+
+        return best;
+    }
+
     private double computeComposite(ModelSuitability ms, LlmModel model,
                                      List<OutcomeMemory> hist, double maxLatency, double maxCost) {
         double suitScore = ms.getBaseScore();
