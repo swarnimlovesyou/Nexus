@@ -1,12 +1,12 @@
 package com.nexus.service;
 
-import com.nexus.domain.Memory;
-
 import java.io.BufferedWriter;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+
+import com.nexus.domain.Memory;
 
 public class ExportService {
     

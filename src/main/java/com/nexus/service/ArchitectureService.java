@@ -1,14 +1,19 @@
 package com.nexus.service;
 
-import com.nexus.domain.MemoryType;
-import com.nexus.util.TerminalUtils;
-
 import java.io.IOException;
-import java.nio.file.*;
-import java.util.*;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+
+import com.nexus.domain.MemoryType;
+import com.nexus.util.TerminalUtils;
 
 /**
  * The Architectural Memory Engine.

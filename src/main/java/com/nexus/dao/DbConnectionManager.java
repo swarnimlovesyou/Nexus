@@ -1,11 +1,11 @@
 package com.nexus.dao;
 
-import com.nexus.exception.DaoException;
-
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.Statement;
+
+import com.nexus.exception.DaoException;
 
 public class DbConnectionManager {
     private static DbConnectionManager instance;

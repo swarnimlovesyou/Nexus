@@ -1,14 +1,18 @@
 package com.nexus.dao;
 
-import com.nexus.domain.Memory;
-import com.nexus.domain.MemoryType;
-import com.nexus.exception.DaoException;
-
-import java.sql.*;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+
+import com.nexus.domain.Memory;
+import com.nexus.domain.MemoryType;
+import com.nexus.exception.DaoException;
 
 public class MemoryDao implements GenericDao<Memory> {
     private final Connection connection;

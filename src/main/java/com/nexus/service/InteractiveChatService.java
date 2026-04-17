@@ -1,10 +1,5 @@
 package com.nexus.service;
 
-import com.nexus.domain.ChatMessage;
-import com.nexus.domain.LlmModel;
-import com.nexus.domain.TaskType;
-import com.nexus.util.TerminalUtils;
-
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
@@ -16,6 +11,11 @@ import java.util.Scanner;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+
+import com.nexus.domain.ChatMessage;
+import com.nexus.domain.LlmModel;
+import com.nexus.domain.TaskType;
+import com.nexus.util.TerminalUtils;
 
 /**
  * Interactive multi-turn coding session.

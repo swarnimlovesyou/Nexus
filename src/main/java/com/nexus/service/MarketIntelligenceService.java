@@ -1,18 +1,18 @@
 package com.nexus.service;
 
-import com.nexus.dao.LlmModelDao;
-import com.nexus.domain.LlmModel;
-import com.nexus.util.TerminalUtils;
-
+import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
-import java.io.IOException;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import com.nexus.dao.LlmModelDao;
+import com.nexus.domain.LlmModel;
+import com.nexus.util.TerminalUtils;
 
 /**
  * Reality Grounding Service.

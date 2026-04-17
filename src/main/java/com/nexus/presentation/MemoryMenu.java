@@ -1,8 +1,8 @@
 package com.nexus.presentation;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.Map;
-import java.io.IOException;
 
 import com.nexus.domain.Memory;
 import com.nexus.domain.MemoryType;

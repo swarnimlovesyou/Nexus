@@ -1,12 +1,5 @@
 package com.nexus.service;
 
-import com.nexus.dao.AuditLogDao;
-import com.nexus.dao.MemoryDao;
-import com.nexus.domain.AuditLog;
-import com.nexus.domain.Memory;
-import com.nexus.domain.MemoryType;
-import com.nexus.exception.ValidationException;
-
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.Locale;
@@ -16,6 +9,13 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+
+import com.nexus.dao.AuditLogDao;
+import com.nexus.dao.MemoryDao;
+import com.nexus.domain.AuditLog;
+import com.nexus.domain.Memory;
+import com.nexus.domain.MemoryType;
+import com.nexus.exception.ValidationException;
 
 public class MemoryService {
     public static final String GLOBAL_SCOPE = "global";
