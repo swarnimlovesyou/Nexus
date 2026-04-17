@@ -1,6 +1,5 @@
 package com.nexus.service;
 
-import com.nexus.domain.Memory;
 import com.nexus.domain.MemoryType;
 import com.nexus.util.TerminalUtils;
 

@@ -1,11 +1,12 @@
 package com.nexus.presentation;
 
+import java.util.List;
+import java.util.Map;
+import java.io.IOException;
+
 import com.nexus.domain.Memory;
 import com.nexus.domain.MemoryType;
 import com.nexus.util.TerminalUtils;
-
-import java.util.List;
-import java.util.Map;
 
 /**
  * Memory Vault menu — full CRUD surface (Create/Read/Update/Delete) for Memory entity.
@@ -117,15 +118,19 @@ public class MemoryMenu {
 
         List<Memory> all;
         String scopeLabel;
-        if (mode == 1) {
-            scopeLabel = ctx.memoryService().currentWorkspaceScope();
-            all = ctx.memoryService().getByScope(ctx.userId(), scopeLabel);
-        } else if (mode == 2) {
-            scopeLabel = com.nexus.service.MemoryService.GLOBAL_SCOPE;
-            all = ctx.memoryService().getByScope(ctx.userId(), scopeLabel);
-        } else {
-            scopeLabel = "all";
-            all = ctx.memoryService().getAllMemories(ctx.userId());
+        switch (mode) {
+            case 1 -> {
+                scopeLabel = ctx.memoryService().currentWorkspaceScope();
+                all = ctx.memoryService().getByScope(ctx.userId(), scopeLabel);
+            }
+            case 2 -> {
+                scopeLabel = com.nexus.service.MemoryService.GLOBAL_SCOPE;
+                all = ctx.memoryService().getByScope(ctx.userId(), scopeLabel);
+            }
+            default -> {
+                scopeLabel = "all";
+                all = ctx.memoryService().getAllMemories(ctx.userId());
+            }
         }
         if (all.isEmpty()) { TerminalUtils.printInfo("Vault is empty. Use 'Store memory' to add entries."); return; }
 
@@ -263,7 +268,7 @@ public class MemoryMenu {
             com.nexus.service.ExportService svc = new com.nexus.service.ExportService();
             String path = svc.exportToCsv(all, filename);
             TerminalUtils.printSuccess("Export complete! File saved to: " + path);
-        } catch (Exception e) {
+        } catch (IOException | RuntimeException e) {
             TerminalUtils.printError("Export failed: " + e.getMessage());
         }
     }

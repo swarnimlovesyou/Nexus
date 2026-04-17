@@ -1,12 +1,14 @@
 package com.nexus.presentation;
 
 import java.util.List;
+import java.util.Optional;
 
 import com.nexus.domain.AgentSession;
 import com.nexus.domain.LlmModel;
 import com.nexus.domain.Memory;
 import com.nexus.domain.MemoryType;
 import com.nexus.domain.OutcomeMemory;
+import com.nexus.domain.Provider;
 import com.nexus.domain.TaskType;
 import com.nexus.exception.DaoException;
 import com.nexus.service.InteractiveChatService;
@@ -33,6 +35,8 @@ public class RoutingMenu {
             System.out.println("  " + TerminalUtils.AMBER + "6" + TerminalUtils.RESET + "  Start Coding Session  " + TerminalUtils.GRAY + "(interactive chat + file access)" + TerminalUtils.RESET);
             System.out.println("  " + TerminalUtils.AMBER + "7" + TerminalUtils.RESET + "  Close Active Session");
             System.out.println("  " + TerminalUtils.AMBER + "8" + TerminalUtils.RESET + "  View My Sessions");
+            System.out.println("  " + TerminalUtils.AMBER + "A" + TerminalUtils.RESET + "  Continue Session From Vault");
+            System.out.println("  " + TerminalUtils.AMBER + "F" + TerminalUtils.RESET + "  View Full Past Chat");
             System.out.println("  " + TerminalUtils.AMBER + "9" + TerminalUtils.RESET + "  Decompose & Execute Plan  " + TerminalUtils.GRAY + "(agentic split)" + TerminalUtils.RESET);
             System.out.println("  " + TerminalUtils.AMBER + "C" + TerminalUtils.RESET + "  Manual Auto-calibrate Engine");
             System.out.println("  " + TerminalUtils.AMBER + "B" + TerminalUtils.RESET + "  Back");
@@ -47,6 +51,8 @@ public class RoutingMenu {
                 case "6" -> ctx.runWithDaoGuard("Could not start session. Database operation failed; no changes were saved.", this::startSession);
                 case "7" -> ctx.runWithDaoGuard("Could not close session. Database operation failed; no changes were saved.", this::closeSession);
                 case "8" -> ctx.runWithDaoGuard("Unable to load sessions right now. Please try again.", this::viewSessions);
+                case "A" -> ctx.runWithDaoGuard("Could not continue session from vault right now.", this::continueSessionFromVault);
+                case "F" -> ctx.runWithDaoGuard("Could not load past chats right now.", this::viewFullPastChat);
                 case "9" -> ctx.runWithDaoGuard("Failed to execute decomposed plan.", this::decomposeAndExecute);
                 case "C" -> ctx.runWithDaoGuard("Calibration failed.", this::manualCalibrate);
                 case "B" -> { return; }
@@ -276,7 +282,10 @@ public class RoutingMenu {
                 task, resp.costUsd(), (int)resp.latencyMs(), 0.50, null);
             ctx.outcomeDao().create(rec);
             TerminalUtils.printSuccess("Simulated outcome recorded. Quality capped at 0.50 to mark synthetic telemetry.");
-        } catch (Exception e) {
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            TerminalUtils.printError("Simulation interrupted. Please retry.");
+        } catch (RuntimeException e) {
             TerminalUtils.printError("Simulation failed: " + e.getMessage());
         }
     }
@@ -326,31 +335,229 @@ public class RoutingMenu {
             ctx.llmCallService(), ctx.profileService(), ctx.scanner());
         InteractiveChatService.ChatResult chatResult = chat.run(
             ctx.userId(), session.getId(), best, task);
+        completeSessionLifecycle(session, best, task, chatResult, null);
+    }
 
-        // Auto-close session with accumulated data
+    private void continueSessionFromVault() {
+        TerminalUtils.printSeparator("CONTINUE SESSION FROM VAULT");
+
+        List<Memory> sessionEpisodes = ctx.memoryService().getByType(ctx.userId(), MemoryType.EPISODE).stream()
+            .filter(m -> extractSessionIdTag(m.getTags()).isPresent())
+            .filter(m -> !hasTag(m.getTags(), "transcript:true"))
+            .toList();
+
+        if (sessionEpisodes.isEmpty()) {
+            TerminalUtils.printInfo("No session-linked EPISODE memories found yet.");
+            TerminalUtils.printInfo("Complete a coding session first so it gets indexed in the vault.");
+            return;
+        }
+
+        int limit = Math.min(12, sessionEpisodes.size());
+        String[] headers = {"Pick", "Memory", "Session", "Preview"};
+        String[][] rows = new String[limit][4];
+        for (int i = 0; i < limit; i++) {
+            Memory m = sessionEpisodes.get(i);
+            String preview = m.getContent() == null ? "" : m.getContent().replace("\n", " ");
+            if (preview.length() > 70) preview = preview.substring(0, 67) + "...";
+            String sessionTag = extractSessionIdTag(m.getTags()).map(String::valueOf).orElse("-");
+            rows[i] = new String[]{String.valueOf(i + 1), "#" + m.getId(), "#" + sessionTag, preview};
+        }
+        TerminalUtils.printTable(headers, rows);
+        if (sessionEpisodes.size() > limit) {
+            TerminalUtils.printInfo("Showing latest " + limit + " of " + sessionEpisodes.size() + " session memories.");
+        }
+
+        System.out.print("  Pick memory # to continue: ");
+        int pick = ctx.safeInt(ctx.scanner().nextLine());
+        if (pick <= 0 || pick > limit) {
+            TerminalUtils.printError("Invalid selection.");
+            return;
+        }
+
+        Memory selected = sessionEpisodes.get(pick - 1);
+        Integer priorSessionId = extractSessionIdTag(selected.getTags()).orElse(null);
+
+        AgentSession prior = null;
+        if (priorSessionId != null) {
+            prior = ctx.sessionService().listUserSessions(ctx.userId()).stream()
+                .filter(s -> s.getId().equals(priorSessionId))
+                .findFirst()
+                .orElse(null);
+        }
+
+        TaskType task = prior != null ? prior.getTaskType() : ctx.pickTask();
+        LlmModel model = resolveContinuationModel(task, prior);
+        if (model == null) {
+            TerminalUtils.printError("No key-accessible model found to continue this session.");
+            return;
+        }
+
+        String startNote = priorSessionId == null
+            ? "continued_from_memory:" + selected.getId()
+            : "continued_from_session:" + priorSessionId + " memory:" + selected.getId();
+        AgentSession session = ctx.sessionService().startSession(ctx.userId(), task, model.getId(), startNote);
+
+        TerminalUtils.printSuccess("Session #" + session.getId() + " opened from vault memory #" + selected.getId() + ".");
+        TerminalUtils.printInfo("Model: " + model.getName() + " (" + model.getProvider() + ")");
+
+        String resumeContext = buildContinuationContext(selected, prior);
+        InteractiveChatService chat = new InteractiveChatService(
+            ctx.llmCallService(), ctx.profileService(), ctx.scanner());
+        InteractiveChatService.ChatResult chatResult = chat.run(
+            ctx.userId(), session.getId(), model, task, resumeContext);
+
+        completeSessionLifecycle(session, model, task, chatResult, selected.getId());
+    }
+
+    private void viewFullPastChat() {
+        TerminalUtils.printSeparator("FULL PAST CHATS");
+
+        List<Memory> transcripts = ctx.memoryService().getByType(ctx.userId(), MemoryType.EPISODE).stream()
+            .filter(m -> hasTag(m.getTags(), "transcript:true"))
+            .filter(m -> extractSessionIdTag(m.getTags()).isPresent())
+            .toList();
+
+        if (transcripts.isEmpty()) {
+            TerminalUtils.printInfo("No full chat transcripts found yet.");
+            TerminalUtils.printInfo("Finish at least one coding session to persist transcript memory.");
+            return;
+        }
+
+        int limit = Math.min(15, transcripts.size());
+        String[] headers = {"Pick", "Memory", "Session", "Preview"};
+        String[][] rows = new String[limit][4];
+        for (int i = 0; i < limit; i++) {
+            Memory m = transcripts.get(i);
+            String preview = m.getContent() == null ? "" : m.getContent().replace("\n", " ");
+            if (preview.length() > 70) preview = preview.substring(0, 67) + "...";
+            String sessionTag = extractSessionIdTag(m.getTags()).map(String::valueOf).orElse("-");
+            rows[i] = new String[]{String.valueOf(i + 1), "#" + m.getId(), "#" + sessionTag, preview};
+        }
+        TerminalUtils.printTable(headers, rows);
+        if (transcripts.size() > limit) {
+            TerminalUtils.printInfo("Showing latest " + limit + " of " + transcripts.size() + " transcripts.");
+        }
+
+        System.out.print("  Pick transcript # to view: ");
+        int pick = ctx.safeInt(ctx.scanner().nextLine());
+        if (pick <= 0 || pick > limit) {
+            TerminalUtils.printError("Invalid selection.");
+            return;
+        }
+
+        Memory selected = transcripts.get(pick - 1);
+        System.out.println();
+        TerminalUtils.printSeparator("CHAT TRANSCRIPT  ·  MEMORY #" + selected.getId());
+        System.out.println(selected.getContent() == null ? "" : selected.getContent());
+        System.out.println();
+        TerminalUtils.printInfo("End of transcript.");
+    }
+
+    private LlmModel resolveContinuationModel(TaskType task, AgentSession prior) {
+        if (prior != null) {
+            Optional<LlmModel> priorModel = ctx.modelDao().read(prior.getModelId());
+            if (priorModel.isPresent()) {
+                LlmModel model = priorModel.get();
+                Optional<Provider> provider = Provider.fromAny(model.getProvider());
+                if (provider.isPresent() && ctx.apiKeyService().hasKeyForProvider(ctx.userId(), provider.get())) {
+                    return model;
+                }
+                TerminalUtils.printWarn("Prior session model " + model.getName() + " has no active API key. Re-routing.");
+            }
+        }
+
+        RoutingEngine.RoutingResult routed = ctx.routingEngine().selectWithResult(task, Double.MAX_VALUE, ctx.userId());
+        if (routed.recommended() != null) return routed.recommended();
+
+        LlmModel fallback = ctx.routingEngine().selectBestKeyAccessibleFallback(task, Double.MAX_VALUE, ctx.userId());
+        if (fallback != null) return fallback;
+
+        return null;
+    }
+
+    private String buildContinuationContext(Memory selected, AgentSession prior) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("Vault memory #").append(selected.getId()).append(":\n");
+        sb.append(selected.getContent() == null ? "" : selected.getContent().trim());
+
+        if (prior != null && prior.getNotes() != null && !prior.getNotes().isBlank()) {
+            sb.append("\n\nPrevious session notes:\n").append(prior.getNotes().trim());
+        }
+        return sb.toString().trim();
+    }
+
+    private Optional<Integer> extractSessionIdTag(String tags) {
+        if (tags == null || tags.isBlank()) return Optional.empty();
+
+        for (String raw : tags.split(",")) {
+            String tag = raw == null ? "" : raw.trim().toLowerCase();
+            if (!tag.startsWith("session:")) continue;
+            String sid = tag.substring("session:".length()).trim();
+            int parsed = ctx.safeInt(sid);
+            if (parsed > 0) return Optional.of(parsed);
+        }
+        return Optional.empty();
+    }
+
+    private boolean hasTag(String tags, String target) {
+        if (tags == null || tags.isBlank() || target == null || target.isBlank()) return false;
+        String t = target.trim().toLowerCase();
+        for (String raw : tags.split(",")) {
+            String tag = raw == null ? "" : raw.trim().toLowerCase();
+            if (tag.equals(t)) return true;
+        }
+        return false;
+    }
+
+    private void completeSessionLifecycle(AgentSession session, LlmModel model, TaskType task,
+                                          InteractiveChatService.ChatResult chatResult,
+                                          Integer sourceMemoryId) {
         try {
+            String recap = chatResult.recap() == null ? "" : chatResult.recap().trim();
+            if (recap.length() > 600) recap = recap.substring(0, 600) + "...";
+
+            String closeNote = "Interactive chat — " + chatResult.turns() + " turn(s)";
+            if (!recap.isEmpty()) {
+                closeNote += "\nrecap:\n" + recap;
+            }
+            if (sourceMemoryId != null) {
+                closeNote += "\ncontinued_from_memory:" + sourceMemoryId;
+            }
+
             AgentSession closed = ctx.sessionService().closeSession(
                 ctx.userId(), session.getId(),
                 chatResult.totalInputTokens(), chatResult.totalOutputTokens(),
-                chatResult.qualityScore(),
-                "Interactive chat — " + chatResult.turns() + " turn(s)");
+                chatResult.qualityScore(), closeNote);
+
             System.out.println();
             TerminalUtils.printSuccess(String.format(
                 "Session #%d closed and saved. Total cost: $%.7f | Quality: %.2f | Turns: %d",
-                session.getId(), closed.getTotalCost(),
-                closed.getQualityScore(), chatResult.turns()));
+                session.getId(), closed.getTotalCost(), closed.getQualityScore(), chatResult.turns()));
 
-            // Auto-create EPISODE memory for significant sessions (≥2 turns)
             if (chatResult.turns() >= 2) {
                 String content = String.format(
-                    "Coding session with %s on %s: %d turns, cost=$%.7f, quality=%.2f",
-                    best.getName(), task.name(), chatResult.turns(),
+                    "Session #%d with %s on %s: %d turns, cost=$%.7f, quality=%.2f",
+                    session.getId(), model.getName(), task.name(), chatResult.turns(),
                     closed.getTotalCost(), closed.getQualityScore());
-                String tags = best.getName().toLowerCase() + "," + task.name().toLowerCase() + ",session";
-                try {
-                    Memory mem = ctx.memoryService().store(ctx.userId(), content, tags, MemoryType.EPISODE, 90);
-                    TerminalUtils.printSuccess("EPISODE memory #" + mem.getId() + " created in vault.");
-                } catch (Exception ignored) {}
+                if (!recap.isEmpty()) {
+                    content += "\n\nRecap:\n" + recap;
+                }
+                String tags = model.getName().toLowerCase() + "," + task.name().toLowerCase()
+                    + ",session,session:" + session.getId();
+                Memory mem = ctx.memoryService().store(ctx.userId(), content, tags, MemoryType.EPISODE, 90);
+                TerminalUtils.printSuccess("EPISODE memory #" + mem.getId() + " created in vault.");
+
+                String transcript = chatResult.fullTranscript() == null ? "" : chatResult.fullTranscript().trim();
+                if (!transcript.isEmpty()) {
+                    String transcriptHeader = String.format(
+                        "Session #%d full transcript (%s, %s)\n\n",
+                        session.getId(), model.getName(), task.name());
+                    String transcriptTags = "session,transcript:true,session:" + session.getId() + ","
+                        + task.name().toLowerCase();
+                    Memory transcriptMem = ctx.memoryService().store(
+                        ctx.userId(), transcriptHeader + transcript, transcriptTags, MemoryType.EPISODE, 180);
+                    TerminalUtils.printSuccess("Transcript memory #" + transcriptMem.getId() + " stored in vault.");
+                }
             }
         } catch (Exception e) {
             TerminalUtils.printError("Session record could not be saved: " + e.getMessage());
@@ -398,7 +605,9 @@ public class RoutingMenu {
             closed.getInputTokens(), closed.getOutputTokens(), closed.getQualityScore(), closed.getTotalCost()
         );
         try {
-            ctx.memoryService().store(ctx.userId(), episode, "session," + closed.getTaskType().name().toLowerCase(), MemoryType.EPISODE, 90);
+            ctx.memoryService().store(ctx.userId(), episode,
+                "session,session:" + sid + "," + closed.getTaskType().name().toLowerCase(),
+                MemoryType.EPISODE, 90);
         } catch (DaoException e) {
             TerminalUtils.printWarn("Session was closed, but EPISODE memory could not be saved right now.");
         }

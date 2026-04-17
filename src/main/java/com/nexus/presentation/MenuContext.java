@@ -78,13 +78,13 @@ public class MenuContext {
     /** Safe integer parse — returns -1 on failure */
     public int safeInt(String s) {
         try { return Integer.parseInt(s.trim()); }
-        catch (Exception e) { return -1; }
+        catch (NumberFormatException | NullPointerException e) { return -1; }
     }
 
     /** Safe double parse — returns NaN on failure */
     public double safeDouble(String s) {
         try { return Double.parseDouble(s.trim()); }
-        catch (Exception e) { return Double.NaN; }
+        catch (NumberFormatException | NullPointerException e) { return Double.NaN; }
     }
 
     /** Reusable task-type picker */
@@ -111,9 +111,7 @@ public class MenuContext {
             action.run();
         } catch (DaoException e) {
             TerminalUtils.printError(failureMessage);
-        } catch (NexusException e) {
-            TerminalUtils.printError(e.getMessage());
-        } catch (IllegalStateException e) {
+        } catch (NexusException | IllegalStateException e) {
             TerminalUtils.printError(e.getMessage());
         }
     }

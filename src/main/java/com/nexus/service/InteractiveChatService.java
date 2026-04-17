@@ -62,7 +62,8 @@ public class InteractiveChatService {
 
     /** Returned to RoutingMenu once the user closes the session. */
     public record ChatResult(int totalInputTokens, int totalOutputTokens,
-                             double totalCost, int turns, double qualityScore) {}
+                             double totalCost, int turns, double qualityScore,
+                             String recap, String fullTranscript) {}
 
     // ─────────────────────────────────────────────────────────────────────────
     // Public entry point
@@ -78,6 +79,14 @@ public class InteractiveChatService {
      * @return accumulated metrics for session closing
      */
     public ChatResult run(int userId, int sessionId, LlmModel model, TaskType taskType) {
+        return run(userId, sessionId, model, taskType, null);
+    }
+
+    /**
+     * Starts the interactive chat loop with optional continuation context.
+     * The context is injected as a system message before the first user turn.
+     */
+    public ChatResult run(int userId, int sessionId, LlmModel model, TaskType taskType, String resumeContext) {
         // Read profile settings
         String scope               = profileService.currentWorkspaceScope();
         boolean allowFileWrite     = profileService.isActionAllowed(userId, scope, "policy.allow_file_write");
@@ -86,6 +95,9 @@ public class InteractiveChatService {
         // Conversation state
         List<ChatMessage> history  = new ArrayList<>();
         history.add(ChatMessage.system(buildSystemPrompt(taskType, scope)));
+        if (resumeContext != null && !resumeContext.trim().isEmpty()) {
+            history.add(ChatMessage.system("Continuation context from prior session:\n" + resumeContext.trim()));
+        }
 
         // Accumulation
         int    totalInputTokens  = 0;
@@ -98,6 +110,9 @@ public class InteractiveChatService {
         String pendingFileCtx    = null;
 
         printChatHeader(sessionId, model, taskType, allowFileWrite);
+        if (resumeContext != null && !resumeContext.trim().isEmpty()) {
+            TerminalUtils.printInfo("Loaded continuation context from vault for this session.");
+        }
 
         // ── Main chat loop ────────────────────────────────────────────────────
         while (true) {
@@ -114,11 +129,11 @@ public class InteractiveChatService {
 
                 switch (cmd) {
                     case "/exit", "/quit", "/close" -> {
-                        return closePrompt(totalInputTokens, totalOutputTokens, totalCost, turns);
+                        return closePrompt(totalInputTokens, totalOutputTokens, totalCost, turns, history);
                     }
                     case "/help"  -> printHelp(allowFileWrite);
                     case "/cost"  -> printCostSummary(totalInputTokens, totalOutputTokens, totalCost, turns, model);
-                    case "/read"  -> pendingFileCtx = handleRead(userId, arg, maxInjectionTokens, scope);
+                    case "/read"  -> pendingFileCtx = handleRead(arg, maxInjectionTokens);
                     case "/write" -> {
                         if (lastCodeBlock != null) handleWrite(lastCodeBlock, allowFileWrite);
                         else                       TerminalUtils.printInfo("No code block detected in last response.");
@@ -183,7 +198,7 @@ public class InteractiveChatService {
     // /exit — collect quality rating and return ChatResult
     // ─────────────────────────────────────────────────────────────────────────
 
-    private ChatResult closePrompt(int totalIn, int totalOut, double totalCost, int turns) {
+    private ChatResult closePrompt(int totalIn, int totalOut, double totalCost, int turns, List<ChatMessage> history) {
         System.out.println();
         TerminalUtils.printSeparator("SESSION CLOSING");
         printCostSummary(totalIn, totalOut, totalCost, turns, null);
@@ -201,14 +216,15 @@ public class InteractiveChatService {
                 TerminalUtils.printWarn("Invalid — using default 0.75.");
             }
         }
-        return new ChatResult(totalIn, totalOut, totalCost, turns, q);
+        return new ChatResult(totalIn, totalOut, totalCost, turns, q,
+            buildRecap(history), buildFullTranscript(history));
     }
 
     // ─────────────────────────────────────────────────────────────────────────
     // /read
     // ─────────────────────────────────────────────────────────────────────────
 
-    private String handleRead(int userId, String pathArg, int maxTokens, String scope) {
+    private String handleRead(String pathArg, int maxTokens) {
         if (pathArg.isEmpty()) {
             System.out.print("  File path to inject: ");
             pathArg = scanner.nextLine().trim();
@@ -405,5 +421,43 @@ public class InteractiveChatService {
             last = m.group(1).trim();
         }
         return last;
+    }
+
+    private String buildRecap(List<ChatMessage> history) {
+        if (history == null || history.isEmpty()) return "";
+
+        List<ChatMessage> visible = history.stream()
+            .filter(m -> m.isUser() || m.isAssistant())
+            .collect(Collectors.toList());
+        if (visible.isEmpty()) return "";
+
+        int start = Math.max(0, visible.size() - 8);
+        StringBuilder recap = new StringBuilder();
+        for (int i = start; i < visible.size(); i++) {
+            ChatMessage m = visible.get(i);
+            String role = m.isUser() ? "User" : "Assistant";
+            String text = m.content() == null ? "" : m.content().trim().replace("\n", " ");
+            if (text.length() > 180) text = text.substring(0, 180) + "...";
+            recap.append(role).append(": ").append(text).append("\n");
+        }
+        return recap.toString().trim();
+    }
+
+    private String buildFullTranscript(List<ChatMessage> history) {
+        if (history == null || history.isEmpty()) return "";
+
+        List<ChatMessage> visible = history.stream()
+            .filter(m -> m.isUser() || m.isAssistant())
+            .collect(Collectors.toList());
+        if (visible.isEmpty()) return "";
+
+        StringBuilder transcript = new StringBuilder();
+        for (int i = 0; i < visible.size(); i++) {
+            ChatMessage m = visible.get(i);
+            String role = m.isUser() ? "User" : "Assistant";
+            transcript.append("[").append(i + 1).append("] ").append(role).append(":\n");
+            transcript.append(m.content() == null ? "" : m.content().trim()).append("\n\n");
+        }
+        return transcript.toString().trim();
     }
 }
