@@ -1,5 +1,6 @@
 package com.nexus.presentation;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -38,6 +39,8 @@ public class RoutingMenu {
             System.out.println("  " + TerminalUtils.AMBER + "A" + TerminalUtils.RESET + "  Continue Session From Vault");
             System.out.println("  " + TerminalUtils.AMBER + "F" + TerminalUtils.RESET + "  View Full Past Chat");
             System.out.println("  " + TerminalUtils.AMBER + "9" + TerminalUtils.RESET + "  Decompose & Execute Plan  " + TerminalUtils.GRAY + "(agentic split)" + TerminalUtils.RESET);
+            System.out.println("  " + TerminalUtils.AMBER + "10" + TerminalUtils.RESET + " Compatibility Features Hub  " + TerminalUtils.GRAY + "(MCP/plugins/hooks/permissions/skills/tasks)" + TerminalUtils.RESET);
+            System.out.println("  " + TerminalUtils.AMBER + "11" + TerminalUtils.RESET + " Session Power Tools  " + TerminalUtils.GRAY + "(resume/rename/fork/rewind/export)" + TerminalUtils.RESET);
             System.out.println("  " + TerminalUtils.AMBER + "C" + TerminalUtils.RESET + "  Manual Auto-calibrate Engine");
             System.out.println("  " + TerminalUtils.AMBER + "B" + TerminalUtils.RESET + "  Back");
             System.out.println();
@@ -54,11 +57,448 @@ public class RoutingMenu {
                 case "A" -> ctx.runWithDaoGuard("Could not continue session from vault right now.", this::continueSessionFromVault);
                 case "F" -> ctx.runWithDaoGuard("Could not load past chats right now.", this::viewFullPastChat);
                 case "9" -> ctx.runWithDaoGuard("Failed to execute decomposed plan.", this::decomposeAndExecute);
+                case "10", "COMPAT", "COMPATIBILITY" -> showCompatibilityHub();
+                case "11", "SESSION-TOOLS", "SESSIONTOOLS", "POWERTOOLS" -> showSessionPowerToolsHub();
                 case "C" -> ctx.runWithDaoGuard("Calibration failed.", this::manualCalibrate);
                 case "B" -> { return; }
                 default  -> TerminalUtils.printError("Unknown option.");
             }
         }
+    }
+
+    public void showCompatibilityHub() {
+        String password = askCommandPassword();
+        if (password == null) return;
+
+        while (true) {
+            TerminalUtils.printSeparator("COMPATIBILITY FEATURES HUB");
+            TerminalUtils.printInfo("What this hub does: run new command-mode compatibility features inside dashboard mode.");
+            System.out.println("  " + TerminalUtils.AMBER + "1" + TerminalUtils.RESET + "  MCP Server Registry  " + TerminalUtils.GRAY + "(add/list/remove/connect servers)" + TerminalUtils.RESET);
+            System.out.println("  " + TerminalUtils.AMBER + "2" + TerminalUtils.RESET + "  Plugin Registry  " + TerminalUtils.GRAY + "(install/enable/disable/reload/info)" + TerminalUtils.RESET);
+            System.out.println("  " + TerminalUtils.AMBER + "3" + TerminalUtils.RESET + "  Hooks Automation  " + TerminalUtils.GRAY + "(event-based command hooks)" + TerminalUtils.RESET);
+            System.out.println("  " + TerminalUtils.AMBER + "4" + TerminalUtils.RESET + "  Permissions Control  " + TerminalUtils.GRAY + "(allow/deny/reset tool policy)" + TerminalUtils.RESET);
+            System.out.println("  " + TerminalUtils.AMBER + "5" + TerminalUtils.RESET + "  Skills Toggle  " + TerminalUtils.GRAY + "(enable/disable built-in skill packs)" + TerminalUtils.RESET);
+            System.out.println("  " + TerminalUtils.AMBER + "6" + TerminalUtils.RESET + "  Agents + Tasks  " + TerminalUtils.GRAY + "(view agents and task/session status)" + TerminalUtils.RESET);
+            System.out.println("  " + TerminalUtils.AMBER + "7" + TerminalUtils.RESET + "  Plan Guardrails  " + TerminalUtils.GRAY + "(toggle plan mode)" + TerminalUtils.RESET);
+            System.out.println("  " + TerminalUtils.AMBER + "8" + TerminalUtils.RESET + "  Runtime Snapshot  " + TerminalUtils.GRAY + "(status/stats/version/update/cost)" + TerminalUtils.RESET);
+            System.out.println("  " + TerminalUtils.AMBER + "P" + TerminalUtils.RESET + "  Re-enter Password");
+            System.out.println("  " + TerminalUtils.AMBER + "B" + TerminalUtils.RESET + "  Back");
+            System.out.println();
+            TerminalUtils.printPrompt(ctx.username());
+
+            String choice = ctx.scanner().nextLine().trim().toUpperCase();
+            switch (choice) {
+                case "1" -> runMcpHub(password);
+                case "2" -> runPluginHub(password);
+                case "3" -> runHooksHub(password);
+                case "4" -> runPermissionsHub(password);
+                case "5" -> runSkillsHub(password);
+                case "6" -> runAgentsTasksHub(password);
+                case "7" -> runPlanHub(password);
+                case "8" -> runSnapshotHub(password);
+                case "P" -> {
+                    String next = askCommandPassword();
+                    if (next != null) password = next;
+                }
+                case "B" -> {
+                    return;
+                }
+                default -> TerminalUtils.printError("Unknown option.");
+            }
+        }
+    }
+
+    public void showSessionPowerToolsHub() {
+        String password = askCommandPassword();
+        if (password == null) return;
+
+        while (true) {
+            TerminalUtils.printSeparator("SESSION POWER TOOLS");
+            TerminalUtils.printInfo("What this hub does: manage sessions from saved transcript memories and lifecycle tools.");
+            System.out.println("  " + TerminalUtils.AMBER + "1" + TerminalUtils.RESET + "  Resume Latest  " + TerminalUtils.GRAY + "(show tail from latest transcript)" + TerminalUtils.RESET);
+            System.out.println("  " + TerminalUtils.AMBER + "2" + TerminalUtils.RESET + "  Resume by Session ID");
+            System.out.println("  " + TerminalUtils.AMBER + "3" + TerminalUtils.RESET + "  Rename Session  " + TerminalUtils.GRAY + "(save human-readable title)" + TerminalUtils.RESET);
+            System.out.println("  " + TerminalUtils.AMBER + "4" + TerminalUtils.RESET + "  Fork Session  " + TerminalUtils.GRAY + "(create new session from prior context)" + TerminalUtils.RESET);
+            System.out.println("  " + TerminalUtils.AMBER + "5" + TerminalUtils.RESET + "  Rewind Session  " + TerminalUtils.GRAY + "(checkpoint transcript up to turn N)" + TerminalUtils.RESET);
+            System.out.println("  " + TerminalUtils.AMBER + "6" + TerminalUtils.RESET + "  Export Latest Transcript");
+            System.out.println("  " + TerminalUtils.AMBER + "7" + TerminalUtils.RESET + "  Export by Session ID");
+            System.out.println("  " + TerminalUtils.AMBER + "8" + TerminalUtils.RESET + "  List Sessions");
+            System.out.println("  " + TerminalUtils.AMBER + "P" + TerminalUtils.RESET + "  Re-enter Password");
+            System.out.println("  " + TerminalUtils.AMBER + "B" + TerminalUtils.RESET + "  Back");
+            System.out.println();
+            TerminalUtils.printPrompt(ctx.username());
+
+            String choice = ctx.scanner().nextLine().trim().toUpperCase();
+            switch (choice) {
+                case "1" -> runCommandMode(password, "session", "resume", "--latest", "true", "--tail", "10");
+                case "2" -> {
+                    String sid = askRequired("  Session ID: ", "Session ID");
+                    if (sid != null) runCommandMode(password, "session", "resume", "--id", sid, "--tail", "10");
+                }
+                case "3" -> {
+                    String sid = askRequired("  Session ID: ", "Session ID");
+                    String title = askRequired("  New title: ", "Title");
+                    if (sid != null && title != null) runCommandMode(password, "session", "rename", "--id", sid, "--title", title);
+                }
+                case "4" -> {
+                    System.out.print("  Fork latest session? (yes/no): ");
+                    String latest = ctx.scanner().nextLine().trim();
+                    if ("yes".equalsIgnoreCase(latest)) {
+                        runCommandMode(password, "session", "fork", "--id", "latest");
+                    } else {
+                        String sid = askRequired("  Source session ID: ", "Session ID");
+                        if (sid != null) runCommandMode(password, "session", "fork", "--id", sid);
+                    }
+                }
+                case "5" -> {
+                    String sid = askRequired("  Session ID: ", "Session ID");
+                    String turn = askRequired("  Rewind to turn #: ", "Turn number");
+                    if (sid != null && turn != null) runCommandMode(password, "session", "rewind", "--id", sid, "--turn", turn);
+                }
+                case "6" -> runCommandMode(password, "session", "export", "--latest", "true", "--format", "markdown");
+                case "7" -> {
+                    String sid = askRequired("  Session ID: ", "Session ID");
+                    if (sid != null) runCommandMode(password, "session", "export", "--id", sid, "--format", "markdown");
+                }
+                case "8" -> runCommandMode(password, "session", "list");
+                case "P" -> {
+                    String next = askCommandPassword();
+                    if (next != null) password = next;
+                }
+                case "B" -> {
+                    return;
+                }
+                default -> TerminalUtils.printError("Unknown option.");
+            }
+        }
+    }
+
+    private void runMcpHub(String password) {
+        while (true) {
+            TerminalUtils.printSeparator("MCP SERVER REGISTRY");
+            TerminalUtils.printInfo("Use this to track and manage MCP server entries used by compatible workflows.");
+            System.out.println("  " + TerminalUtils.AMBER + "1" + TerminalUtils.RESET + "  List MCP servers");
+            System.out.println("  " + TerminalUtils.AMBER + "2" + TerminalUtils.RESET + "  Add stdio MCP server");
+            System.out.println("  " + TerminalUtils.AMBER + "3" + TerminalUtils.RESET + "  Add HTTP MCP server");
+            System.out.println("  " + TerminalUtils.AMBER + "4" + TerminalUtils.RESET + "  Remove MCP server");
+            System.out.println("  " + TerminalUtils.AMBER + "5" + TerminalUtils.RESET + "  Restart MCP server");
+            System.out.println("  " + TerminalUtils.AMBER + "6" + TerminalUtils.RESET + "  Connect MCP server");
+            System.out.println("  " + TerminalUtils.AMBER + "7" + TerminalUtils.RESET + "  Disconnect MCP server");
+            System.out.println("  " + TerminalUtils.AMBER + "B" + TerminalUtils.RESET + "  Back");
+            System.out.println();
+            TerminalUtils.printPrompt(ctx.username());
+            String choice = ctx.scanner().nextLine().trim().toUpperCase();
+            switch (choice) {
+                case "1" -> runCommandMode(password, "mcp", "list");
+                case "2" -> {
+                    String name = askRequired("  Name: ", "Name");
+                    String command = askRequired("  Command (e.g., npx): ", "Command");
+                    String args = askRequired("  Args (e.g., -y @modelcontextprotocol/server-filesystem .): ", "Args");
+                    if (name != null && command != null && args != null)
+                        runCommandMode(password, "mcp", "add", "--name", name, "--type", "stdio", "--command", command, "--args", args);
+                }
+                case "3" -> {
+                    String name = askRequired("  Name: ", "Name");
+                    String url = askRequired("  URL: ", "URL");
+                    if (name != null && url != null)
+                        runCommandMode(password, "mcp", "add", "--name", name, "--type", "http", "--url", url);
+                }
+                case "4" -> {
+                    String name = askRequired("  Name to remove: ", "Name");
+                    if (name != null) runCommandMode(password, "mcp", "remove", "--name", name);
+                }
+                case "5" -> {
+                    String name = askRequired("  Name to restart: ", "Name");
+                    if (name != null) runCommandMode(password, "mcp", "restart", "--name", name);
+                }
+                case "6" -> {
+                    String name = askRequired("  Name to connect: ", "Name");
+                    if (name != null) runCommandMode(password, "mcp", "connect", "--name", name);
+                }
+                case "7" -> {
+                    String name = askRequired("  Name to disconnect: ", "Name");
+                    if (name != null) runCommandMode(password, "mcp", "disconnect", "--name", name);
+                }
+                case "B" -> {
+                    return;
+                }
+                default -> TerminalUtils.printError("Unknown option.");
+            }
+        }
+    }
+
+    private void runPluginHub(String password) {
+        while (true) {
+            TerminalUtils.printSeparator("PLUGIN REGISTRY");
+            TerminalUtils.printInfo("Use this to manage plugin entries and enable/disable plugin capabilities.");
+            System.out.println("  " + TerminalUtils.AMBER + "1" + TerminalUtils.RESET + "  List plugins");
+            System.out.println("  " + TerminalUtils.AMBER + "2" + TerminalUtils.RESET + "  Install plugin by name");
+            System.out.println("  " + TerminalUtils.AMBER + "3" + TerminalUtils.RESET + "  Remove plugin");
+            System.out.println("  " + TerminalUtils.AMBER + "4" + TerminalUtils.RESET + "  Enable plugin");
+            System.out.println("  " + TerminalUtils.AMBER + "5" + TerminalUtils.RESET + "  Disable plugin");
+            System.out.println("  " + TerminalUtils.AMBER + "6" + TerminalUtils.RESET + "  Reload plugin registry");
+            System.out.println("  " + TerminalUtils.AMBER + "7" + TerminalUtils.RESET + "  Show plugin info");
+            System.out.println("  " + TerminalUtils.AMBER + "B" + TerminalUtils.RESET + "  Back");
+            System.out.println();
+            TerminalUtils.printPrompt(ctx.username());
+            String choice = ctx.scanner().nextLine().trim().toUpperCase();
+            switch (choice) {
+                case "1" -> runCommandMode(password, "plugin", "list");
+                case "2" -> {
+                    String name = askRequired("  Plugin name (e.g., demo/plugin): ", "Plugin name");
+                    if (name != null) runCommandMode(password, "plugin", "install", "--name", name);
+                }
+                case "3" -> {
+                    String name = askRequired("  Plugin name to remove: ", "Plugin name");
+                    if (name != null) runCommandMode(password, "plugin", "remove", "--name", name);
+                }
+                case "4" -> {
+                    String name = askRequired("  Plugin name to enable: ", "Plugin name");
+                    if (name != null) runCommandMode(password, "plugin", "enable", "--name", name);
+                }
+                case "5" -> {
+                    String name = askRequired("  Plugin name to disable: ", "Plugin name");
+                    if (name != null) runCommandMode(password, "plugin", "disable", "--name", name);
+                }
+                case "6" -> runCommandMode(password, "plugin", "reload");
+                case "7" -> {
+                    String name = askRequired("  Plugin name for info: ", "Plugin name");
+                    if (name != null) runCommandMode(password, "plugin", "info", "--name", name);
+                }
+                case "B" -> {
+                    return;
+                }
+                default -> TerminalUtils.printError("Unknown option.");
+            }
+        }
+    }
+
+    private void runHooksHub(String password) {
+        while (true) {
+            TerminalUtils.printSeparator("HOOKS AUTOMATION");
+            TerminalUtils.printInfo("Hooks run command snippets on lifecycle events; use carefully and keep commands explicit.");
+            System.out.println("  " + TerminalUtils.AMBER + "1" + TerminalUtils.RESET + "  List hooks");
+            System.out.println("  " + TerminalUtils.AMBER + "2" + TerminalUtils.RESET + "  Add hook");
+            System.out.println("  " + TerminalUtils.AMBER + "3" + TerminalUtils.RESET + "  Remove hook");
+            System.out.println("  " + TerminalUtils.AMBER + "B" + TerminalUtils.RESET + "  Back");
+            System.out.println();
+            TerminalUtils.printPrompt(ctx.username());
+            String choice = ctx.scanner().nextLine().trim().toUpperCase();
+            switch (choice) {
+                case "1" -> runCommandMode(password, "hooks", "list");
+                case "2" -> {
+                    String event = askRequired("  Event name (e.g., SessionStart): ", "Event");
+                    String command = askRequired("  Command to run: ", "Command");
+                    if (event != null && command != null) runCommandMode(password, "hooks", "add", "--event", event, "--command", command);
+                }
+                case "3" -> {
+                    String id = askRequired("  Hook ID to remove: ", "Hook ID");
+                    if (id != null) runCommandMode(password, "hooks", "remove", "--id", id);
+                }
+                case "B" -> {
+                    return;
+                }
+                default -> TerminalUtils.printError("Unknown option.");
+            }
+        }
+    }
+
+    private void runPermissionsHub(String password) {
+        while (true) {
+            TerminalUtils.printSeparator("PERMISSIONS CONTROL");
+            TerminalUtils.printInfo("Policy controls what tools can run: fs.read, fs.write, shell.exec.");
+            System.out.println("  " + TerminalUtils.AMBER + "1" + TerminalUtils.RESET + "  List permissions");
+            System.out.println("  " + TerminalUtils.AMBER + "2" + TerminalUtils.RESET + "  Allow tool");
+            System.out.println("  " + TerminalUtils.AMBER + "3" + TerminalUtils.RESET + "  Deny tool");
+            System.out.println("  " + TerminalUtils.AMBER + "4" + TerminalUtils.RESET + "  Reset permissions");
+            System.out.println("  " + TerminalUtils.AMBER + "B" + TerminalUtils.RESET + "  Back");
+            System.out.println();
+            TerminalUtils.printPrompt(ctx.username());
+            String choice = ctx.scanner().nextLine().trim().toUpperCase();
+            switch (choice) {
+                case "1" -> runCommandMode(password, "permissions", "list");
+                case "2" -> {
+                    String tool = askRequired("  Tool (fs.read|fs.write|shell.exec): ", "Tool");
+                    if (tool != null) runCommandMode(password, "permissions", "allow", "--tool", tool);
+                }
+                case "3" -> {
+                    String tool = askRequired("  Tool (fs.read|fs.write|shell.exec): ", "Tool");
+                    if (tool != null) runCommandMode(password, "permissions", "deny", "--tool", tool);
+                }
+                case "4" -> runCommandMode(password, "permissions", "reset");
+                case "B" -> {
+                    return;
+                }
+                default -> TerminalUtils.printError("Unknown option.");
+            }
+        }
+    }
+
+    private void runSkillsHub(String password) {
+        while (true) {
+            TerminalUtils.printSeparator("SKILLS TOGGLE");
+            TerminalUtils.printInfo("Skills are capability presets used by workflows. Enable/disable to tailor behavior.");
+            System.out.println("  " + TerminalUtils.AMBER + "1" + TerminalUtils.RESET + "  List skills");
+            System.out.println("  " + TerminalUtils.AMBER + "2" + TerminalUtils.RESET + "  Enable skill");
+            System.out.println("  " + TerminalUtils.AMBER + "3" + TerminalUtils.RESET + "  Disable skill");
+            System.out.println("  " + TerminalUtils.AMBER + "4" + TerminalUtils.RESET + "  Reload skills");
+            System.out.println("  " + TerminalUtils.AMBER + "B" + TerminalUtils.RESET + "  Back");
+            System.out.println();
+            TerminalUtils.printPrompt(ctx.username());
+            String choice = ctx.scanner().nextLine().trim().toUpperCase();
+            switch (choice) {
+                case "1" -> runCommandMode(password, "skills", "list");
+                case "2" -> {
+                    String name = askRequired("  Skill name to enable: ", "Skill name");
+                    if (name != null) runCommandMode(password, "skills", "enable", "--name", name);
+                }
+                case "3" -> {
+                    String name = askRequired("  Skill name to disable: ", "Skill name");
+                    if (name != null) runCommandMode(password, "skills", "disable", "--name", name);
+                }
+                case "4" -> runCommandMode(password, "skills", "reload");
+                case "B" -> {
+                    return;
+                }
+                default -> TerminalUtils.printError("Unknown option.");
+            }
+        }
+    }
+
+    private void runAgentsTasksHub(String password) {
+        while (true) {
+            TerminalUtils.printSeparator("AGENTS + TASKS");
+            TerminalUtils.printInfo("Agents show available execution personas. Tasks map to running/closed sessions.");
+            System.out.println("  " + TerminalUtils.AMBER + "1" + TerminalUtils.RESET + "  Show agents");
+            System.out.println("  " + TerminalUtils.AMBER + "2" + TerminalUtils.RESET + "  List tasks");
+            System.out.println("  " + TerminalUtils.AMBER + "3" + TerminalUtils.RESET + "  Stop task by session ID");
+            System.out.println("  " + TerminalUtils.AMBER + "4" + TerminalUtils.RESET + "  Show task output by session ID");
+            System.out.println("  " + TerminalUtils.AMBER + "B" + TerminalUtils.RESET + "  Back");
+            System.out.println();
+            TerminalUtils.printPrompt(ctx.username());
+            String choice = ctx.scanner().nextLine().trim().toUpperCase();
+            switch (choice) {
+                case "1" -> runCommandMode(password, "agents");
+                case "2" -> runCommandMode(password, "tasks", "list");
+                case "3" -> {
+                    String sid = askRequired("  Session ID to stop: ", "Session ID");
+                    if (sid != null) runCommandMode(password, "tasks", "stop", "--id", sid);
+                }
+                case "4" -> {
+                    String sid = askRequired("  Session ID for output: ", "Session ID");
+                    if (sid != null) runCommandMode(password, "tasks", "output", "--id", sid);
+                }
+                case "B" -> {
+                    return;
+                }
+                default -> TerminalUtils.printError("Unknown option.");
+            }
+        }
+    }
+
+    private void runPlanHub(String password) {
+        while (true) {
+            TerminalUtils.printSeparator("PLAN GUARDRAILS");
+            TerminalUtils.printInfo("Plan mode locks the run into planning-first behavior and tightens risky actions.");
+            System.out.println("  " + TerminalUtils.AMBER + "1" + TerminalUtils.RESET + "  Enable plan mode");
+            System.out.println("  " + TerminalUtils.AMBER + "2" + TerminalUtils.RESET + "  Enable ultra plan mode");
+            System.out.println("  " + TerminalUtils.AMBER + "3" + TerminalUtils.RESET + "  Disable plan mode");
+            System.out.println("  " + TerminalUtils.AMBER + "B" + TerminalUtils.RESET + "  Back");
+            System.out.println();
+            TerminalUtils.printPrompt(ctx.username());
+            String choice = ctx.scanner().nextLine().trim().toUpperCase();
+            switch (choice) {
+                case "1" -> runCommandMode(password, "plan");
+                case "2" -> runCommandMode(password, "ultraplan");
+                case "3" -> runCommandMode(password, "plan", "off");
+                case "B" -> {
+                    return;
+                }
+                default -> TerminalUtils.printError("Unknown option.");
+            }
+        }
+    }
+
+    private void runSnapshotHub(String password) {
+        while (true) {
+            TerminalUtils.printSeparator("RUNTIME SNAPSHOT");
+            TerminalUtils.printInfo("Use this to quickly inspect health, usage, and build/version context.");
+            System.out.println("  " + TerminalUtils.AMBER + "1" + TerminalUtils.RESET + "  Status");
+            System.out.println("  " + TerminalUtils.AMBER + "2" + TerminalUtils.RESET + "  Stats");
+            System.out.println("  " + TerminalUtils.AMBER + "3" + TerminalUtils.RESET + "  Version");
+            System.out.println("  " + TerminalUtils.AMBER + "4" + TerminalUtils.RESET + "  Update Guidance");
+            System.out.println("  " + TerminalUtils.AMBER + "5" + TerminalUtils.RESET + "  Cost report");
+            System.out.println("  " + TerminalUtils.AMBER + "6" + TerminalUtils.RESET + "  Usage report");
+            System.out.println("  " + TerminalUtils.AMBER + "B" + TerminalUtils.RESET + "  Back");
+            System.out.println();
+            TerminalUtils.printPrompt(ctx.username());
+            String choice = ctx.scanner().nextLine().trim().toUpperCase();
+            switch (choice) {
+                case "1" -> runCommandMode(password, "status");
+                case "2" -> runCommandMode(password, "stats");
+                case "3" -> runCommandMode(password, "version");
+                case "4" -> runCommandMode(password, "update");
+                case "5" -> runCommandMode(password, "cost");
+                case "6" -> runCommandMode(password, "usage");
+                case "B" -> {
+                    return;
+                }
+                default -> TerminalUtils.printError("Unknown option.");
+            }
+        }
+    }
+
+    private String askCommandPassword() {
+        TerminalUtils.printSeparator("AUTHORIZATION CHECK");
+        TerminalUtils.printInfo("These actions execute the new command-mode features inside dashboard mode.");
+        System.out.print("  Re-enter password for " + ctx.username() + ": ");
+        String password = ctx.scanner().nextLine();
+        if (password == null || password.isBlank()) {
+            TerminalUtils.printWarn("Password is required to run these actions.");
+            return null;
+        }
+        return password;
+    }
+
+    private String askRequired(String prompt, String fieldName) {
+        System.out.print(prompt);
+        String value = ctx.scanner().nextLine();
+        if (value == null || value.trim().isEmpty()) {
+            TerminalUtils.printError(fieldName + " cannot be empty.");
+            return null;
+        }
+        return value.trim();
+    }
+
+    private void runCommandMode(String password, String... commandParts) {
+        List<String> args = new ArrayList<>();
+        args.add("command");
+        if (commandParts != null) {
+            for (String part : commandParts) {
+                if (part != null && !part.isBlank()) args.add(part);
+            }
+        }
+
+        if (!containsFlag(args, "--user")) {
+            args.add("--user");
+            args.add(ctx.username());
+        }
+        if (!containsFlag(args, "--password")) {
+            args.add("--password");
+            args.add(password);
+        }
+
+        boolean handled = NexusCommandRunner.tryRun(args.toArray(String[]::new));
+        if (!handled) {
+            TerminalUtils.printWarn("Command could not be executed in command mode. Please verify input and try again.");
+        }
+    }
+
+    private boolean containsFlag(List<String> args, String flag) {
+        for (String token : args) {
+            if (flag.equalsIgnoreCase(token)) return true;
+        }
+        return false;
     }
 
     private void routeTask() {

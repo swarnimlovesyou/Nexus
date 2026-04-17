@@ -162,6 +162,8 @@ public class NexusApp {
         commandRows.add(new String[] {"Operate", "history", "6", "Execution History"});
         commandRows.add(new String[] {"Operate", "audit", "7", "Audit Log"});
         commandRows.add(new String[] {"Operate", "profile", "8", "Account + Profile"});
+        commandRows.add(new String[] {"Advanced", "compat", "10", "Compatibility Features Hub"});
+        commandRows.add(new String[] {"Advanced", "session-tools", "11", "Session Power Tools"});
         commandRows.add(new String[] {"Advanced", "intel", "I", "Intelligence Hub"});
         if ("ADMIN".equals(ctx.loggedInUser().getRole())) {
             commandRows.add(new String[] {"Advanced", "admin", "9", "System Administration"});
@@ -176,7 +178,7 @@ public class NexusApp {
         System.out.println("  Command mode fast path: nexus onboard --user " + ctx.username() + " --mode balanced --provider GROQ");
         System.out.println("  Suggested flow: route -> memory -> profile -> onboard");
         System.out.println();
-        TerminalUtils.printInfo("Use aliases (route, memory, profile...) or legacy keys (1..9, I, 0).");
+        TerminalUtils.printInfo("Use aliases (route, memory, profile...) or legacy keys (1..11, I, 0).");
         TerminalUtils.printPrompt(ctx.username());
         String input = ctx.scanner().nextLine().trim().toUpperCase();
         switch (input) {
@@ -188,6 +190,8 @@ public class NexusApp {
             case "6", "HISTORY", "EXEC", "H" -> historyMenu.show();
             case "7", "AUDIT", "A" -> auditMenu.show();
             case "8", "PROFILE", "ACCOUNT", "P" -> accountSettings();
+            case "10", "COMPAT", "COMPATIBILITY" -> routingMenu.showCompatibilityHub();
+            case "11", "SESSION-TOOLS", "SESSIONTOOLS", "POWERTOOLS" -> routingMenu.showSessionPowerToolsHub();
             case "I", "INTEL", "INTELLIGENCE" -> intelligenceMenu.show();
             case "9", "ADMIN" -> { if ("ADMIN".equals(ctx.loggedInUser().getRole())) adminMenu.show(); }
             case "0", "LOGOUT", "EXIT", "Q" -> { ctx.setLoggedInUser(null); TerminalUtils.clearScreen(); TerminalUtils.printBanner(); }
