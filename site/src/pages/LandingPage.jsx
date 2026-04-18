@@ -1,6 +1,6 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import { BookOpen, Terminal, Shield, Workflow, Database, Zap, Lock, CreditCard, ChevronRight, SquareCode, User } from 'lucide-react';
 
 const FEATURES = [
@@ -16,9 +16,9 @@ const FEATURES = [
     id: 'routing',
     title: "Agentic Routing", 
     desc: "Stop guessing which LLM to use. Nexus scores models by suitability, historical quality, cost efficiency, and latency, then explains the ranking before you choose.",
-    icon: <Workflow size={24}/>,
     label: "VERITY ENGINE",
-    specs: { Weights: '35/30/20/15', ExplainMode: 'Built-in', WhatIf: 'Budget tiers' }
+    icon: <Workflow size={24}/>,
+    specs: { Weights: '45/25/20/10', ExplainMode: 'Built-in', WhatIf: 'Budget tiers' }
   },
   { 
     id: 'memory',
@@ -45,12 +45,20 @@ const FEATURES = [
     specs: { MaskedView: 'Enabled', OwnershipChecks: 'Enabled', ProviderAware: 'Enabled' }
   },
   { 
-    id: 'latency',
-    title: "Predictive Latency", 
-    desc: "Latency from recorded outcomes is fed back into routing scores, helping recommendations adapt to your recent execution behavior.",
-    icon: <Zap size={24}/>,
-    label: "TELEMETRY",
-    specs: { Signal: 'Latency score', Source: 'Outcome history', Scope: 'Per task/model' }
+    id: 'compat',
+    title: "Compatibility Suite", 
+    desc: "Bring existing MCP/plugin workflows into Nexus using compatibility aliases, slash commands, and local registries for hooks and integration metadata.",
+    icon: <Zap size={24}/> ,
+    label: "CLAURST-COMPAT",
+    specs: { Families: 'MCP/Plugin/Hooks', Aliases: 'Slash + plain', Registry: 'target/nexus-config' }
+  },
+  {
+    id: 'session-tools',
+    title: "Session Power Tools",
+    desc: "Advanced lifecycle controls let operators resume, rename, fork, rewind, and export sessions for deterministic branching and handoff.",
+    icon: <Terminal size={24}/>,
+    label: "LIFECYCLE CTRL",
+    specs: { Actions: '5', Mode: 'Menu + CLI', Export: 'Markdown-ready' }
   }
 ];
 
@@ -80,13 +88,13 @@ export function LandingPage() {
           initial={{ opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
         >
-          <div className="badge-premium">v2.0.0 — THE AGENTIC UPDATE</div>
+          <div className="badge-premium">v2.1.1 - COMPATIBILITY UPDATE</div>
           <h1 className="hero-title">
             The intelligent center for<br />
             <span className="text-glow">Autonomous Orchestration.</span>
           </h1>
           <p className="hero-subtitle">
-            Nexus is a local-first architectural core that bridge the gap between stochastic LLM outputs and deterministic agentic workflows.
+            Nexus is a local-first architectural core that bridges the gap between stochastic LLM outputs and deterministic agentic workflows.
           </p>
           
           <div className="hero-ctas">

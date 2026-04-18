@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Helmet } from 'react-helmet-async';
-import { ShieldCheck, Activity, Brain, Zap, Cpu, Lock, ArrowRight, GitBranch, Binary, Database, Layers, Target, Settings, Clock, Network, Globe } from 'lucide-react';
+import { ShieldCheck, Activity, Brain, Zap, Cpu, Lock, ArrowRight, GitBranch, Binary, Database, Layers, Target, Settings, Clock, Network, Globe, Plug, GitFork } from 'lucide-react';
 import { Terminal, Callout } from '../components/UI';
 
 const container = {
@@ -45,10 +45,11 @@ export function OverviewPage() {
       <motion.div variants={item} style={{ marginBottom: '64px' }}>
         <Terminal lines={[
           '<span class="t-prompt">nexus@local $</span> <span class="t-cmd">nexus start</span>',
-          '<span style="color: var(--accent)">Nexus v2.1.0 — Agentic OS loading...</span>',
+          '<span style="color: var(--accent)">Nexus v2.1.1 — Agentic OS loading...</span>',
           '<span style="color: var(--green)">● Core Online · Memory Vault: 24 memories · Security: CLEAN</span>',
           '<span style="color: var(--text-muted)">[Intelligence] Architecture DNA: 56 classes indexed</span>',
           '<span style="color: var(--text-muted)">[Market] Last sync: 2026-04-09 · gpt-4o: $0.005/1k</span>',
+          '<span style="color: var(--text-muted)">[Compatibility] MCP: 3 · Plugins: 5 · Hooks: 4</span>',
           '<span style="color: var(--accent); font-weight: 850">ROUTING VERDICT: claude-3-5-sonnet [Score: 0.967 · Cost: $0.0036]</span>'
         ]} />
       </motion.div>
@@ -157,6 +158,16 @@ export function OverviewPage() {
              <p>A multi-turn terminal chat connected to the optimal model, featuring contextual file injection (/read) and safe code extraction (/write).</p>
            </div>
            <div className="pillar-card">
+             <Plug size={18} />
+             <h4>Compatibility Suite</h4>
+             <p>Claurst-style command families for MCP, plugins, hooks, permissions, skills, agents, tasks, and plan automation.</p>
+           </div>
+           <div className="pillar-card">
+             <GitFork size={18} />
+             <h4>Session Power Tools</h4>
+             <p>Resume, rename, fork, rewind, and export multi-turn sessions for deterministic branching workflows.</p>
+           </div>
+           <div className="pillar-card">
              <Lock size={18} />
              <h4>Security Sentinel</h4>
              <p>Proactively scans the local workspace for leaked API keys, hardcoded IPs, and SQL injection risks before they reach version control.</p>
@@ -194,6 +205,14 @@ export function OverviewPage() {
               <span>CLI Reference &rarr;</span>
               <p>Interactive and headless command-mode usage.</p>
            </Link>
+            <Link to="/compatibility" className="deep-dive-link">
+              <span>Compatibility Suite &rarr;</span>
+              <p>MCP, plugins, hooks, permissions, skills, agents, tasks, and plan workflows.</p>
+            </Link>
+            <Link to="/session-tools" className="deep-dive-link">
+              <span>Session Power Tools &rarr;</span>
+              <p>Resume, rename, fork, rewind, and export lifecycle controls.</p>
+            </Link>
         </div>
       </motion.div>
     </motion.div>

@@ -12,7 +12,7 @@ export function QuickstartPage() {
     <motion.div className="page" initial="hidden" animate="show" variants={container}>
       <Helmet>
         <title>Quickstart — Nexus Autopilot</title>
-        <meta name="description" content="Go from zero to your first autonomously routed and security-audited AI interaction in under 2 minutes with Nexus v2.1.0." />
+        <meta name="description" content="Go from zero to your first autonomously routed and security-audited AI interaction in under 2 minutes with Nexus v2.1.1." />
       </Helmet>
 
       <motion.div variants={item}>
@@ -91,6 +91,12 @@ export function QuickstartPage() {
              <div className="step-badge">04</div>
              <h3>Routed Dispatch</h3>
              <p>Navigate to <strong>Option 1</strong> and enter a complex coding prompt. Nexus will plan, route, and execute autonomously.</p>
+           </div>
+
+           <div className="step-box">
+             <div className="step-badge">05</div>
+             <h3>Power Features</h3>
+             <p>Use <strong>Option 10</strong> for Compatibility Suite workflows and <strong>Option 11</strong> for Session Power Tools like fork and export.</p>
            </div>
         </div>
 

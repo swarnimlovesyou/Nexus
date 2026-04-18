@@ -2,7 +2,7 @@ import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { 
   Terminal, Shield, BrainCircuit, Activity, BookOpen, Key, 
-  DollarSign, Download, Zap, History, X, ShieldAlert, Binary, RefreshCw 
+  DollarSign, Download, Zap, History, X, ShieldAlert, Binary, RefreshCw, Plug, GitFork
 } from 'lucide-react';
 
 const MENU = [
@@ -22,6 +22,8 @@ const MENU = [
       { id: 'memory',    label: 'Memory Vault',         path: '/memory',     icon: BrainCircuit },
       { id: 'api-vault', label: 'API Key Vault',        path: '/api-vault',  icon: Key },
       { id: 'finance',   label: 'Financial Intelligence', path: '/finance',  icon: DollarSign },
+      { id: 'compatibility', label: 'Compatibility Suite', path: '/compatibility', icon: Plug },
+      { id: 'session-tools', label: 'Session Power Tools', path: '/session-tools', icon: GitFork },
     ]
   },
   {

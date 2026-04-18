@@ -7,6 +7,19 @@ const item = { hidden: { opacity: 0, y: 20 }, show: { opacity: 1, y: 0 }};
 
 const releases = [
   {
+    version: 'v2.1.1',
+    date: '2026-04-12',
+    type: 'major',
+    changes: [
+      { kind: 'new', text: 'Claurst-style Compatibility Suite in command mode with slash normalization and aliases for MCP, plugins, hooks, permissions, skills, agents, tasks, and plan commands' },
+      { kind: 'new', text: 'Session Power Tools added: resume, rename, fork, rewind, and export lifecycle operations for advanced multi-turn workflows' },
+      { kind: 'new', text: 'Interactive dashboard expanded with option 10 (Compatibility Hub) and option 11 (Session Power Tools) with guided menu descriptions' },
+      { kind: 'new', text: 'Frontend docs parity update: dedicated Compatibility Suite and Session Power Tools pages, refreshed CLI reference, and updated overview links' },
+      { kind: 'improved', text: 'Command dispatch compatibility improved via slash/alias normalization and broader cross-tool command acceptance' },
+      { kind: 'fixed', text: 'Skill enable flow no longer fails when enabling the final disabled skill; empty disabled set now clears the profile key safely' },
+    ]
+  },
+  {
     version: 'v2.1.0',
     date: '2026-04-09',
     type: 'major',

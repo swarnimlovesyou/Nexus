@@ -20,6 +20,8 @@ import { SovereignDocsPage } from './pages/SovereignDocsPage';
 import { SecuritySentinelPage } from './pages/SecuritySentinelPage';
 import { ArchitectureDnaPage } from './pages/ArchitectureDnaPage';
 import { MarketIntelligencePage } from './pages/MarketIntelligencePage';
+import { CompatibilityFeaturesPage } from './pages/CompatibilityFeaturesPage';
+import { SessionPowerToolsPage } from './pages/SessionPowerToolsPage';
 
 function DocsLayout({ sidebarOpen, setSidebarOpen }) {
   return (
@@ -29,7 +31,7 @@ function DocsLayout({ sidebarOpen, setSidebarOpen }) {
         <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
         <main className="main">
           <Routes>
-            <Route index element={<Navigate to="overview" replace />} />
+            <Route index element={<Navigate to="/overview" replace />} />
             <Route path="overview" element={<OverviewPage />} />
             <Route path="install" element={<InstallPage />} />
             <Route path="quickstart" element={<QuickstartPage />} />
@@ -38,12 +40,14 @@ function DocsLayout({ sidebarOpen, setSidebarOpen }) {
             <Route path="memory" element={<MemoryLayerPage />} />
             <Route path="api-vault" element={<ApiKeyVaultPage />} />
             <Route path="finance" element={<FinancialPage />} />
+            <Route path="compatibility" element={<CompatibilityFeaturesPage />} />
+            <Route path="session-tools" element={<SessionPowerToolsPage />} />
             <Route path="security" element={<SecuritySentinelPage />} />
             <Route path="architecture-dna" element={<ArchitectureDnaPage />} />
             <Route path="market-intel" element={<MarketIntelligencePage />} />
             <Route path="cli" element={<CliReferencePage />} />
             <Route path="changelog" element={<ChangelogPage />} />
-            <Route path="*" element={<Navigate to="overview" replace />} />
+            <Route path="*" element={<Navigate to="/overview" replace />} />
           </Routes>
         </main>
         <aside className="toc-sidebar">

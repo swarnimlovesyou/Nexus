@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion';
 import { Helmet } from 'react-helmet-async';
-import { Terminal as TerminalIcon, Search, HelpCircle, Code, Settings2, Command, Terminal as CliIcon, Play, RefreshCw, Archive, Activity } from 'lucide-react';
+import { Command, Terminal as CliIcon, Play, RefreshCw, Archive, Activity, Layers, GitFork } from 'lucide-react';
 import { CodeBlock, Callout, Terminal } from '../components/UI';
 
 const container = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.1 }}};
@@ -10,7 +10,7 @@ export function CliReferencePage() {
   return (
     <motion.div className="page" initial="hidden" animate="show" variants={container}>
       <Helmet>
-        <title>CLI Reference — Nexus Autopilot</title>
+        <title>CLI Reference - Nexus Autopilot</title>
       </Helmet>
 
       <motion.div variants={item}>
@@ -20,7 +20,6 @@ export function CliReferencePage() {
           Nexus is built for engineers who work in the terminal. A single binary for all your agentic orchestration needs.
         </p>
 
-        {/* ── Start Command ───────────────────────── */}
         <section className="doc-section">
            <div className="section-header-inline">
               <Play size={20} color="var(--accent)" />
@@ -28,7 +27,7 @@ export function CliReferencePage() {
            </div>
            <p>The CLI entrypoint launches the interactive dashboard.</p>
            <CodeBlock lang="bash" code="nexus start" />
-           
+
            <div className="table-responsive" style={{ marginTop: '24px' }}>
               <table className="custom-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
@@ -40,11 +39,11 @@ export function CliReferencePage() {
                 </thead>
                 <tbody>
                   {[
-                   { flag: 'nexus start', def: 'yes', desc: 'Launches the full interactive dashboard with all menu modules.' },
+                    { flag: 'nexus start', def: 'yes', desc: 'Launches the full interactive dashboard with all menu modules.' },
                     { flag: 'java -jar nexus.jar', def: 'yes', desc: 'Runs Nexus directly without wrapper scripts. Equivalent to nexus start.' },
-                    { flag: 'nexus session ...', def: 'yes', desc: 'Run session workflows from command mode (list / start / close) without entering the menu loop.' },
-                    { flag: 'nexus finance report ...', def: 'yes', desc: 'Generate spend analytics from command mode with date-range filters (e.g. --range 30d).' },
-                    { flag: 'nexus health', def: 'yes', desc: 'Ping all configured API endpoints. Reports latency and connectivity status for each provider.' },
+                    { flag: 'nexus session ...', def: 'yes', desc: 'Run session workflows from command mode, including resume/rename/fork/rewind/export.' },
+                    { flag: 'nexus finance report ...', def: 'yes', desc: 'Generate spend analytics from command mode with date-range filters (for example --range 30d).' },
+                    { flag: 'nexus mcp|plugin|hooks ...', def: 'yes', desc: 'Operate compatibility registries and operational integrations from command mode.' },
                   ].map((row, i) => (
                     <tr key={i} style={{ borderBottom: '1px solid var(--border)' }}>
                       <td style={{ padding: '12px', color: 'var(--accent)', fontWeight: '850', fontFamily: 'var(--mono)', fontSize: '13px' }}>{row.flag}</td>
@@ -68,18 +67,57 @@ export function CliReferencePage() {
             code={`nexus session list --user admin
 nexus session start --user admin --task CODE_GENERATION --note "pairing on refactor"
 nexus session close --user admin --id 42 --input 1200 --output 580 --quality 0.89
+nexus session fork --id 42 --title "experiment branch"
+nexus mcp list
+nexus plugin list
+nexus hooks list
 nexus finance report --user admin --range 30d`}
           />
         </section>
 
-        {/* ── Command Modules ─────────────────────── */}
+        <section className="doc-section">
+          <div className="section-header-inline">
+            <Layers size={20} color="var(--accent)" />
+            <h2>Compatibility Command Suite</h2>
+          </div>
+          <p>
+            Compatibility aliases are normalized by the dispatcher. Both slash commands and plain command forms map to
+            the same underlying handlers.
+          </p>
+          <CodeBlock
+            lang="bash"
+            code={`nexus /mcp list
+nexus /plugin list
+nexus permissions status
+nexus skills list
+nexus agents list
+nexus tasks list
+nexus /plan run --goal "reduce model spend"`}
+          />
+        </section>
+
+        <section className="doc-section">
+          <div className="section-header-inline">
+            <GitFork size={20} color="var(--accent)" />
+            <h2>Session Power Tools</h2>
+          </div>
+          <p>Advanced lifecycle controls let you continue, branch, and export sessions from either menus or command mode.</p>
+          <CodeBlock
+            lang="bash"
+            code={`nexus session resume --id 42
+nexus session rename --id 42 --title "post-merge polish"
+nexus session rewind --id 42 --to 4
+nexus session export --id 42 --format markdown`}
+          />
+        </section>
+
         <section className="doc-section">
           <h2>Core Command Modules</h2>
           <div className="pillars-grid">
              <div className="pillar-card">
                <Activity size={18} fill="rgba(232,116,92,0.1)" />
                <h4>Routing & Sessions</h4>
-               <p>Route tasks, run explain/what-if, test provider calls, and run interactive coding sessions.</p>
+               <p>Route tasks, run explain and what-if, test provider calls, and run interactive coding sessions.</p>
              </div>
              <div className="pillar-card">
                <Archive size={18} fill="rgba(232,116,92,0.1)" />
@@ -89,19 +127,18 @@ nexus finance report --user admin --range 30d`}
              <div className="pillar-card">
                <RefreshCw size={18} fill="rgba(232,116,92,0.1)" />
                <h4>History & Finance</h4>
-               <p>Track outcomes, filter by task/model/date, and inspect spend vs optimization opportunities.</p>
+               <p>Track outcomes, filter by task/model/date, and inspect spend versus optimization opportunities.</p>
              </div>
           </div>
         </section>
 
-        {/* ── Interactive Loop ─────────────────────── */}
         <section className="doc-section">
            <div className="section-header-inline">
               <Command size={20} color="var(--accent)" />
               <h2>The Interactive Loop</h2>
            </div>
            <p>Once inside the Nexus loop, navigate using numeric keyboard indices to switch between orchestration pillars.</p>
-           
+
            <Terminal lines={[
              '<span style="color: var(--text-muted)">[1] Intelligent Routing Engine</span>',
              '<span style="color: var(--text-muted)">[2] Memory Vault</span>',
@@ -112,17 +149,18 @@ nexus finance report --user admin --range 30d`}
              '<span style="color: var(--text-muted)">[7] Audit Log</span>',
              '<span style="color: var(--text-muted)">[8] Account Settings</span>',
              '<span style="color: var(--text-muted)">[I] Intelligence Hub  (Architecture DNA · Security · Market)</span>',
+             '<span style="color: var(--text-muted)">[10] Compatibility Hub  (MCP · Plugins · Hooks · Permissions · Skills · Agents · Tasks · Plan)</span>',
+             '<span style="color: var(--text-muted)">[11] Session Power Tools  (Resume · Rename · Fork · Rewind · Export)</span>',
              '<span style="color: var(--text-muted)">[9] System Administration  (ADMIN only)</span>',
              '<span style="color: var(--accent)">nexus@local > Select module: </span>'
            ]} />
         </section>
 
-        {/* ── Environment ──────────────────────────── */}
         <section className="doc-section">
           <h2>Notes</h2>
           <div className="best-practices-grid">
             <Callout type="info">
-              <strong>Database:</strong> Nexus persists all data in local SQLite (`nexus.db`) through JDBC DAOs.
+              <strong>Database:</strong> Nexus persists all data in local SQLite (nexus.db) through JDBC DAOs.
             </Callout>
             <Callout type="warning">
               <strong>Provider calls:</strong> Live call mode depends on network and valid API keys. If unavailable, Nexus falls back to simulation mode and labels it explicitly.
