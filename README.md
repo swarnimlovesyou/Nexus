@@ -55,6 +55,34 @@ execution history, cost analytics, and auditable event logs on top of SQLite.
 - Real HTTP call path for OpenAI-compatible providers (`OpenAI`, `Groq`, `OpenRouter`), plus Anthropic and Gemini paths
 - If provider call fails (network, key, endpoint, lab restrictions), Nexus falls back to simulation mode and labels output clearly
 
+### 10) Claurst-Style Compatibility Command Suite
+- Slash-prefixed command compatibility in command mode (for example: `/status`, `/mcp`, `/skills`, `/plan`)
+- New command groups for compatibility workflows:
+	- `mcp`: list/add/remove/restart/connect/disconnect
+	- `plugin`: list/install/remove/enable/disable/reload/info
+	- `hooks`: list/add/remove
+	- `permissions`: list/allow/deny/reset
+	- `skills`: list/enable/disable/reload
+	- `agents`, `tasks`, `plan`, `ultraplan`, `status`, `stats`, `version`, `update`
+- Local registries for compatibility state are stored under `target/nexus-config`:
+	- `mcp.db`, `plugins.db`, `hooks.db`
+
+### 11) Session Power Tools
+- Added command-mode session lifecycle tools:
+	- `session resume`: show latest or selected transcript tail
+	- `session rename`: set a human title for session listing
+	- `session fork`: create a new session from prior context
+	- `session rewind`: checkpoint transcript at a selected turn
+	- `session export`: export transcript as markdown/text/json
+- Session listing includes title metadata when available
+
+### 12) Dashboard Integration for New Features
+- The interactive dashboard now includes two new menu entries:
+	- `10` Compatibility Features Hub
+	- `11` Session Power Tools
+- Each hub includes plain-language guidance so users can understand what each action does before executing it
+- Hub actions call the same command-mode implementations, so behavior is consistent between command mode and interactive mode
+
 ## Technical Architecture
 
 Layered design (assignment aligned):
@@ -107,6 +135,10 @@ nexus start
 
 ### Command Mode (Non-Interactive)
 You can run session and finance workflows directly from the terminal:
+
+- Command mode accepts both plain and slash-prefixed forms. These are equivalent:
+	- `nexus status --user admin`
+	- `nexus /status --user admin`
 
 ### Nexus Chat Quick Guide
 1. Start fresh: nexus chat --user admin
@@ -228,6 +260,30 @@ nexus tool list --user admin
 nexus tool run --user admin --name fs.read --path README.md --maxchars 1500
 nexus tool run --user admin --name shell.exec --command "git status --short" --timeoutseconds 10
 
+# compatibility command suite (slash-compatible forms)
+nexus /mcp list --user admin --password admin123
+nexus /mcp add --user admin --password admin123 --name filesystem --command npx --args "-y @modelcontextprotocol/server-filesystem ."
+nexus /plugin list --user admin --password admin123
+nexus /plugin install --user admin --password admin123 --name demo/plugin
+nexus /hooks list --user admin --password admin123
+nexus /permissions list --user admin --password admin123
+nexus /skills list --user admin --password admin123
+nexus /agents --user admin --password admin123
+nexus /tasks list --user admin --password admin123
+nexus /plan --user admin --password admin123
+nexus /plan off --user admin --password admin123
+nexus /status --user admin --password admin123
+nexus /stats --user admin --password admin123
+nexus /version
+nexus /update
+
+# session power tools
+nexus session resume --user admin --latest true --tail 10
+nexus session rename --user admin --id 12 --title "Payment Retry Investigation"
+nexus session fork --user admin --id latest
+nexus session rewind --user admin --id 12 --turn 8
+nexus session export --user admin --latest true --format markdown
+
 # provider readiness checks (key + live health)
 nexus provider list --user admin
 nexus provider setup --user admin --provider GROQ --from-env true
@@ -240,6 +296,9 @@ nexus policy simulate --user admin --command "codegen run --output src/main/java
 nexus smoke run --user admin --provider GROQ
 
 # interactive dashboard now supports section-style command words (route, memory, keys, models, finance, history, audit, profile, intel)
+# interactive dashboard also exposes advanced hubs:
+#   10 = Compatibility Features Hub (mcp/plugin/hooks/permissions/skills/agents/tasks/plan/status)
+#   11 = Session Power Tools (resume/rename/fork/rewind/export)
 
 # smoke report artifacts are saved to target/smoke/*.json and *.md for CI/history tracking
 
